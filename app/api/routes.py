@@ -50,12 +50,9 @@ class RecordingUpdate(BaseModel):
 
 
 @router.post("/recordings/start")
-def start_recording(
-    duration_seconds: Optional[int] = None,
-    manager: RecordingManager = recording_manager,
-) -> dict:
+def start_recording(duration_seconds: Optional[int] = None) -> dict:
     try:
-        info = manager.start(duration_seconds=duration_seconds)
+        info = recording_manager.start(duration_seconds=duration_seconds)
     except RecordingBusyError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except RecordingNoSpaceError as exc:
@@ -74,8 +71,8 @@ def start_recording(
 
 
 @router.post("/recordings/stop")
-def stop_recording(manager: RecordingManager = recording_manager) -> dict:
-    info = manager.stop()
+def stop_recording() -> dict:
+    info = recording_manager.stop()
     if info is None:
         return {"stopped": False, "reason": "no_active_recording"}
 
@@ -161,4 +158,3 @@ def delete_recording_endpoint(recording_id: str) -> dict:
     if not deleted:
         raise HTTPException(status_code=404, detail="Recording not found")
     return {"deleted": True, "id": recording_id}
-
