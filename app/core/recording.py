@@ -1,5 +1,6 @@
 import os
 import re
+import shutil
 import subprocess
 import threading
 import uuid
@@ -9,7 +10,6 @@ from pathlib import Path
 from typing import List, Optional
 
 from app.core.config import settings
-from app.core.status import _disk_free_bytes, _minutes_remaining
 
 
 class RecordingError(Exception):
@@ -221,8 +221,12 @@ class RecordingManager:
 
         recording_dir = Path(settings.recording_dir)
         recording_dir.mkdir(parents=True, exist_ok=True)
-        free_bytes = _disk_free_bytes(str(recording_dir))
-        minutes_remaining = _minutes_remaining(free_bytes)
+        usage = shutil.disk_usage(str(recording_dir))
+        free_bytes = usage.free
+
+        bps = _bytes_per_second()
+        bytes_per_minute = bps * 60 if bps > 0 else 0
+        minutes_remaining = free_bytes / bytes_per_minute if bytes_per_minute else 0.0
 
         required_minutes = duration_seconds / 60.0
         safety_margin_minutes = 5.0
