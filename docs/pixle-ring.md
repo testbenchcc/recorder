@@ -84,3 +84,48 @@ From the Seeed pinout (matches KEYESTUDIO):
 
 If you're already using I2C devices, they share the bus fine as long as addresses don’t conflict.
 
+---
+
+## Recording indicator service
+
+This project includes a small helper that turns the pixel ring into a **recording status indicator**, driven by the FastAPI backend.
+
+- Script: `pixel_ring_service.py`
+- Behavior:
+  - Polls the `/status` endpoint on the backend (using `RECORDER_API_BASE_URL`, default `http://127.0.0.1:8000`).
+  - When `recording_active` is `true`, the ring turns **red**.
+  - When `recording_active` is `false`, the ring is turned **off**.
+- Tunables (env vars):
+  - `RECORDER_RING_POLL_INTERVAL` – seconds between status polls (default `1.0`).
+  - `RECORDER_RING_BRIGHTNESS` – brightness `0–100` (default `20`).
+
+On the Pi, make sure you have:
+
+```bash
+sudo pip3 install pixel-ring
+```
+
+And that the main recorder backend is running (e.g. `./run.sh` from the repo).
+
+### Installing the services (button + ring)
+
+Both the **button service** (`button_service.py`) and the **pixel ring recording indicator** (`pixel_ring_service.py`) can be installed as systemd services with a single script:
+
+```bash
+cd /home/pi/recorder  # adjust to your clone path
+sudo ./install_hardware_services.sh
+```
+
+This script will:
+
+- Create/update `recorder-button.service` and `recorder-pixel-ring.service` under `/etc/systemd/system/`.
+- Set `WorkingDirectory` to the repo path and `User` to your non-root user.
+- Enable both services on boot and start them immediately.
+
+You can check their status with:
+
+```bash
+systemctl status recorder-button.service
+systemctl status recorder-pixel-ring.service
+```
+
