@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.recording import manager as recording_manager
 
 
 def _disk_free_bytes(path: str) -> int:
@@ -29,6 +30,8 @@ def get_status() -> dict:
         "/proc/asound/cards"
     )
 
+    current = recording_manager.current()
+
     return {
         "card_present": card_present,
         "recording_dir": str(recording_path),
@@ -37,5 +40,14 @@ def get_status() -> dict:
         "sample_format": settings.sample_format,
         "sample_rate": settings.sample_rate,
         "channels": settings.channels,
+        "recording_active": current is not None,
+        "current_recording": {
+            "id": current.id,
+            "path": str(current.path),
+            "started_at": current.started_at.isoformat(),
+            "requested_duration_seconds": current.requested_duration_seconds,
+            "max_duration_seconds": current.max_duration_seconds,
+        }
+        if current
+        else None,
     }
-

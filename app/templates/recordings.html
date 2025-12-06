@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Recorder – Recordings{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12 mb-3">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Recordings</span>
+        <button class="btn btn-sm btn-outline-secondary" id="refresh-btn">Refresh</button>
+      </div>
+      <div class="card-body">
+        <div id="recordings-empty" class="text-muted">No recordings yet.</div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle" id="recordings-table" style="display: none;">
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Duration (s)</th>
+                <th>Size (KB)</th>
+                <th>Name</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="recordings-messages" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row mt-3">
+  <div class="col-12">
+    <audio id="player" controls class="w-100" style="display: none;"></audio>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/recordings.js"></script>
+{% endblock %}
+

@@ -1,7 +1,8 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -20,6 +21,7 @@ from app.core.recording import (
 )
 
 router = APIRouter()
+templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/healthz")
@@ -47,6 +49,16 @@ def config() -> dict:
 
 class RecordingUpdate(BaseModel):
     name: str = Field(..., max_length=200)
+
+
+@router.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
+
+@router.get("/recordings/view", response_class=HTMLResponse)
+def recordings_page(request: Request):
+    return templates.TemplateResponse("recordings.html", {"request": request})
 
 
 @router.post("/recordings/start")

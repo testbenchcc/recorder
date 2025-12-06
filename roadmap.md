@@ -60,19 +60,18 @@
 
 ## Phase 5 – Web UI (Bootstrap 5)
 
-- Set up a simple frontend stack:
-  - Option A: server-rendered templates via FastAPI + Jinja2.
-  - Option B: static HTML/JS served by FastAPI.
-- Home page:
-  - Display live status (space remaining in minutes, current recording state).
-  - Controls: Start/Stop recording, show elapsed time and target max duration.
-  - Show recent errors/status messages.
-- Recording page:
-  - List recordings with pagination.
-  - Actions: play (browser audio element using stream URL), rename, delete.
-  - Show duration, created time, and size.
-- Ensure responsive layout with Bootstrap 5, minimal but clear styling.
-- Output: usable browser UI covering all core flows.
+- [x] Set up a simple frontend stack:
+  - [x] Server-rendered templates via FastAPI + Jinja2 with Bootstrap 5.
+- [x] Home page:
+  - [x] Display live status (space remaining in minutes, current recording state).
+  - [x] Controls: Start/Stop recording, show elapsed time and target max duration.
+  - [x] Show recent errors/status messages.
+- [x] Recording page:
+  - [x] List recordings with pagination basics.
+  - [x] Actions: play (browser audio element using stream URL), rename, delete.
+  - [x] Show duration, created time, and size.
+- [x] Ensure responsive layout with Bootstrap 5, minimal but clear styling.
+- [x] Output: usable browser UI covering all core flows.
 
 ---
 
