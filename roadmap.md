@@ -46,15 +46,15 @@
 
 ## Phase 4 – Recording Management API
 
-- Implement REST (or simple JSON) endpoints:
-  - `GET /recordings` (paginated list with filters/sort).
-  - `GET /recordings/{id}` (metadata).
-  - `GET /recordings/{id}/stream` (audio streaming/download).
-  - `PATCH /recordings/{id}` (rename).
-  - `DELETE /recordings/{id}` (delete).
-- Validate user input (safe filenames, length limits, prevent path traversal).
-- Implement retention rules (e.g., prevent recording if under X minutes of space remain; optional auto-prune oldest).
-- Output: stable API for the frontend to manage recordings.
+- [x] Implement REST (or simple JSON) endpoints:
+  - [x] `GET /recordings` (paginated list with filters/sort).
+  - [x] `GET /recordings/{id}` (metadata).
+  - [x] `GET /recordings/{id}/stream` (audio streaming/download).
+  - [x] `PATCH /recordings/{id}` (rename).
+  - [x] `DELETE /recordings/{id}` (delete).
+- [x] Validate user input (safe filenames, length limits, prevent path traversal).
+- [x] Implement retention rules (e.g., prevent recording if under X minutes of space remain; optional auto-prune oldest).
+- [x] Output: stable API for the frontend to manage recordings.
 
 ---
 

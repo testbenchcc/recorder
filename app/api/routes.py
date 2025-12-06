@@ -1,6 +1,8 @@
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.core.status import get_status
@@ -9,7 +11,12 @@ from app.core.recording import (
     RecordingDeviceError,
     RecordingManager,
     RecordingNoSpaceError,
+    RecordingError,
+    delete_recording,
+    get_recording,
+    list_recordings,
     manager as recording_manager,
+    rename_recording,
 )
 
 router = APIRouter()
@@ -36,6 +43,10 @@ def config() -> dict:
         "max_single_recording_seconds": settings.max_single_recording_seconds,
         "retention_hours": settings.retention_hours,
     }
+
+
+class RecordingUpdate(BaseModel):
+    name: str = Field(..., max_length=200)
 
 
 @router.post("/recordings/start")
@@ -73,4 +84,81 @@ def stop_recording(manager: RecordingManager = recording_manager) -> dict:
         "id": info.id,
         "path": str(info.path),
     }
+
+
+@router.get("/recordings")
+def list_recordings_endpoint(limit: int = 50, offset: int = 0) -> dict:
+    items = list_recordings()
+    items_sorted = sorted(items, key=lambda r: r.created_at, reverse=True)
+    sliced = items_sorted[offset : offset + limit]
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "path": str(r.path),
+                "size_bytes": r.size_bytes,
+                "duration_seconds": r.duration_seconds,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in sliced
+        ],
+        "total": len(items_sorted),
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+@router.get("/recordings/{recording_id}")
+def get_recording_endpoint(recording_id: str) -> dict:
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    return {
+        "id": meta.id,
+        "path": str(meta.path),
+        "size_bytes": meta.size_bytes,
+        "duration_seconds": meta.duration_seconds,
+        "created_at": meta.created_at.isoformat(),
+    }
+
+
+@router.get("/recordings/{recording_id}/stream")
+def stream_recording(recording_id: str):
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    return FileResponse(
+        path=str(meta.path),
+        media_type="audio/wav",
+        filename=meta.path.name,
+    )
+
+
+@router.patch("/recordings/{recording_id}")
+def rename_recording_endpoint(recording_id: str, payload: RecordingUpdate) -> dict:
+    try:
+        meta = rename_recording(recording_id, payload.name)
+    except RecordingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    return {
+        "id": meta.id,
+        "path": str(meta.path),
+        "size_bytes": meta.size_bytes,
+        "duration_seconds": meta.duration_seconds,
+        "created_at": meta.created_at.isoformat(),
+    }
+
+
+@router.delete("/recordings/{recording_id}")
+def delete_recording_endpoint(recording_id: str) -> dict:
+    deleted = delete_recording(recording_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Recording not found")
+    return {"deleted": True, "id": recording_id}
 
