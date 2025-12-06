@@ -3,4 +3,4 @@ uvicorn[standard]
 pydantic-settings
 pytest
 httpx
-
+jinja2
