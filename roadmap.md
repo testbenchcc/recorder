@@ -33,14 +33,14 @@
 
 ## Phase 3 – Recording Pipeline & File Layout
 
-- Decide directory layout and naming scheme (e.g., `recordings/YYYY/MM/DD/<timestamp>_<short-id>.wav`).
-- Implement a recording service wrapper around `arecord` (or ALSA library) with:
-  - Start recording (with max duration, async process handling).
-  - Stop recording.
-  - Error mapping (busy device, no space, card missing).
-- Implement storage accounting: convert free disk space → remaining recording time, plus per-file metadata (duration, size, created_at).
-- Ensure recordings are flushed to disk safely and survive reboots/UPS events (avoid temp dirs).
-- Output: backend endpoints for start/stop recording; internal module for recording management.
+- [x] Decide directory layout and naming scheme (e.g., `recordings/YYYY/MM/DD/<timestamp>_<short-id>.wav`).
+- [x] Implement a recording service wrapper around `arecord` (or ALSA library) with:
+  - [x] Start recording (with max duration, async process handling).
+  - [x] Stop recording.
+  - [x] Error mapping (busy device, no space, card missing).
+- [x] Implement storage accounting: convert free disk space → remaining recording time, plus per-file metadata (duration, size, created_at).
+- [x] Ensure recordings are flushed to disk safely and survive reboots/UPS events (avoid temp dirs).
+- [x] Output: backend endpoints for start/stop recording; internal module for recording management.
 
 ---
 
