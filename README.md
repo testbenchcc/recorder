@@ -71,14 +71,14 @@ Use Tailscale for SSH and serving web pages in a tailnet.
 This will allow referncing the device using its tailnet name, which should be the same as the devices name, [recorder](https://recorder). It also allows for pointing a reverse proxy at the devices web interface so a domain can be used.
 
 ```bash
-curl -fsSL https://pkgs.tailscale.com/stable/debian/bullseye.noarmor.gpg \
-  | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
+sudo apt-get install apt-transport-https
 
-curl -fsSL https://pkgs.tailscale.com/stable/debian/bullseye.tailscale-keyring.list \
-  | sudo tee /etc/apt/sources.list.d/tailscale.list
+curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bullseye.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg > /dev/null
+curl -fsSL https://pkgs.tailscale.com/stable/raspbian/bullseye.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
 
-sudo apt update
-sudo apt install -y tailscale
+sudo apt-get update
+sudo apt-get install -y tailscale
+
 sudo tailscale up --ssh
 ```
 
@@ -98,7 +98,7 @@ if you are not using tailscale, simply use the devices IP with the port appended
 ---
 
 
-# **6. Install and Run Your Recorder App**
+# **6. Install and Run Recorder App** (this repo)
 
 This is the backbone of the recoring functionality. It provides the interface and API calls to start and stop recording. 
 
