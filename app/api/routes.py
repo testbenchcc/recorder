@@ -291,7 +291,10 @@ def transcribe_recording_endpoint(
     inference_url = f"{api_base}/inference"
 
     try:
-        with httpx.Client(timeout=60.0) as client:
+        # Allow very long-running transcription requests (large files, slow models)
+        # by disabling the HTTP client timeout for the Whisper call. Connection
+        # setup still relies on the underlying OS/socket timeouts.
+        with httpx.Client(timeout=None) as client:
             with open(meta.path, "rb") as f:
                 files = {"file": (meta.path.name, f, "audio/wav")}
                 requested_fmt = (
