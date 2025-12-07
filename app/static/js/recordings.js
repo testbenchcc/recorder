@@ -10,6 +10,8 @@ function setRecordingsMessage(text, type = "info") {
 
 let transcriptModal = null;
 let currentTranscriptRecordingId = null;
+let transcriptProgressStartedAt = null;
+let transcriptProgressTimerId = null;
 
 function getSelectedTranscriptFormat() {
   const select = document.getElementById("transcript-format");
@@ -26,6 +28,55 @@ function setTranscriptLoading(loadingEl, isLoading) {
   } else {
     loadingEl.classList.remove("d-flex");
     loadingEl.style.display = "none";
+  }
+}
+
+function setTranscriptStatusText(text) {
+  const el = document.getElementById("transcript-status-line");
+  if (el) {
+    el.textContent = text;
+  }
+}
+
+function updateTranscriptElapsed() {
+  if (!transcriptProgressStartedAt) return;
+  const elapsedEl = document.getElementById("transcript-elapsed");
+  if (!elapsedEl) return;
+
+  const seconds = Math.max(
+    0,
+    Math.floor((Date.now() - transcriptProgressStartedAt) / 1000),
+  );
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  const minutesText = `${minutes}m`;
+  const secondsText = `${remainingSeconds.toString().padStart(2, "0")}s`;
+
+  if (seconds < 15) {
+    setTranscriptStatusText("Uploading audio to transcription server…");
+  } else {
+    setTranscriptStatusText(
+      "Waiting for transcription server to finish processing…",
+    );
+  }
+
+  elapsedEl.textContent = `Elapsed: ${minutesText} ${secondsText}`;
+}
+
+function startTranscriptProgress() {
+  transcriptProgressStartedAt = Date.now();
+  updateTranscriptElapsed();
+  if (transcriptProgressTimerId != null) {
+    window.clearInterval(transcriptProgressTimerId);
+  }
+  transcriptProgressTimerId = window.setInterval(updateTranscriptElapsed, 1000);
+}
+
+function stopTranscriptProgress() {
+  transcriptProgressStartedAt = null;
+  if (transcriptProgressTimerId != null) {
+    window.clearInterval(transcriptProgressTimerId);
+    transcriptProgressTimerId = null;
   }
 }
 
@@ -193,6 +244,7 @@ async function transcribeRecording(id, overrideFormat) {
 
   const selectedFormat = overrideFormat || getSelectedTranscriptFormat();
 
+  startTranscriptProgress();
   setTranscriptLoading(loadingEl, true);
   contentEl.style.display = "none";
   contentEl.textContent = "";
@@ -234,6 +286,7 @@ async function transcribeRecording(id, overrideFormat) {
     errorMessage = "Error requesting transcription";
     setRecordingsMessage(errorMessage, "danger");
   } finally {
+    stopTranscriptProgress();
     setTranscriptLoading(loadingEl, false);
     if (errorMessage && contentEl) {
       contentEl.style.display = "block";

@@ -93,7 +93,12 @@
             role="status"
             aria-hidden="true"
           ></div>
-          <span>Transcribing recording…</span>
+          <div class="small">
+            <div id="transcript-status-line">
+              Uploading audio to transcription server…
+            </div>
+            <div id="transcript-elapsed" class="text-muted"></div>
+          </div>
         </div>
         <pre
           id="transcript-content"
