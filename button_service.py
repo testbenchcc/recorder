@@ -4,6 +4,7 @@ import os
 import signal
 import sys
 import time
+from typing import Optional
 
 import httpx
 
@@ -87,7 +88,7 @@ def _stop_recording() -> None:
         )
 
 
-def _get_recording_active() -> bool | None:
+def _get_recording_active() -> Optional[bool]:
     """Return True if a recording is active, False if not, or None on error."""
     url = f"{API_BASE_URL.rstrip('/')}/status"
     try:

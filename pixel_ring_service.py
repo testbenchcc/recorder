@@ -4,6 +4,7 @@ import os
 import signal
 import sys
 import time
+from typing import Optional
 
 import httpx
 
@@ -24,7 +25,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pixel_ring_service")
 
-_last_recording_active: bool | None = None
+_last_recording_active: Optional[bool] = None
 
 
 def _set_ring_state(recording_active: bool) -> None:
@@ -93,4 +94,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
