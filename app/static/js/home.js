@@ -1,5 +1,6 @@
 let statusTimer = null;
 let currentStartedAt = null;
+let storageChart = null;
 
 function setMessage(text, type = "info") {
   const container = document.getElementById("messages");
@@ -23,6 +24,114 @@ function updateElapsed() {
   el.textContent = `${seconds}s`;
 }
 
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 B";
+  }
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = bytes;
+  let idx = 0;
+  while (value >= 1024 && idx < units.length - 1) {
+    value /= 1024;
+    idx += 1;
+  }
+  return `${value.toFixed(1)} ${units[idx]}`;
+}
+
+function updateStorageChart(data) {
+  const canvas = document.getElementById("storage-chart");
+  if (!canvas || typeof Chart === "undefined") {
+    return;
+  }
+
+  const recordingsBytes = data.recordings_bytes ?? 0;
+  const freeBytes = data.free_bytes ?? 0;
+  const totalBytes =
+    data.total_bytes && data.total_bytes > 0
+      ? data.total_bytes
+      : recordingsBytes + freeBytes;
+
+  let otherBytes = 0;
+  if (totalBytes > 0) {
+    const candidate = totalBytes - recordingsBytes - freeBytes;
+    otherBytes = candidate > 0 ? candidate : 0;
+  }
+
+  const labels = [];
+  const values = [];
+  const colors = [];
+
+  if (recordingsBytes > 0) {
+    labels.push("Recordings");
+    values.push(recordingsBytes);
+    colors.push("rgba(13, 110, 253, 0.7)");
+  }
+
+  if (otherBytes > 0) {
+    labels.push("Other");
+    values.push(otherBytes);
+    colors.push("rgba(108, 117, 125, 0.7)");
+  }
+
+  if (freeBytes > 0 || values.length === 0) {
+    labels.push("Free");
+    values.push(freeBytes);
+    colors.push("rgba(25, 135, 84, 0.7)");
+  }
+
+  if (storageChart) {
+    storageChart.data.labels = labels;
+    storageChart.data.datasets[0].data = values;
+    storageChart.data.datasets[0].backgroundColor = colors;
+    storageChart.update();
+  } else {
+    storageChart = new Chart(canvas, {
+      type: "doughnut",
+      data: {
+        labels,
+        datasets: [
+          {
+            data: values,
+            backgroundColor: colors,
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: "bottom",
+          },
+          tooltip: {
+            callbacks: {
+              label(context) {
+                const label = context.label || "";
+                const value = context.parsed || 0;
+                const total = context.chart.data.datasets[0].data.reduce(
+                  (acc, v) => acc + v,
+                  0,
+                );
+                const pct =
+                  total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+                return `${label}: ${formatBytes(value)} (${pct}%)`;
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  const summary = document.getElementById("storage-summary");
+  if (summary) {
+    const count = data.recordings_count ?? 0;
+    const recordingsText = `${count} recording${count === 1 ? "" : "s"}`;
+    const usedText = formatBytes(recordingsBytes);
+    const freeText = formatBytes(freeBytes);
+    summary.textContent = `${recordingsText}, ${usedText} used, ${freeText} free`;
+  }
+}
+
 async function refreshStatus() {
   try {
     const res = await fetch("/status");
@@ -39,12 +148,26 @@ async function refreshStatus() {
       ? "Recording"
       : "Idle";
 
+    const statusBadge = document.getElementById("status-badge");
+    if (statusBadge) {
+      if (data.recording_active) {
+        statusBadge.textContent = "Recording";
+        statusBadge.classList.remove("bg-secondary");
+        statusBadge.classList.add("bg-danger");
+      } else {
+        statusBadge.textContent = "Idle";
+        statusBadge.classList.remove("bg-danger");
+        statusBadge.classList.add("bg-secondary");
+      }
+    }
+
     if (data.recording_active && data.current_recording) {
       currentStartedAt = data.current_recording.started_at;
     } else {
       currentStartedAt = null;
     }
     updateElapsed();
+    updateStorageChart(data);
   } catch (err) {
     console.error(err);
     setMessage("Error fetching status", "danger");
@@ -109,4 +232,3 @@ window.addEventListener("DOMContentLoaded", () => {
   refreshStatus();
   statusTimer = setInterval(refreshStatus, 5000);
 });
-

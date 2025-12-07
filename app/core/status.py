@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 from app.core.config import settings
-from app.core.recording import manager as recording_manager
+from app.core.recording import list_recordings, manager as recording_manager
 
 
 def _disk_free_bytes(path: str) -> int:
@@ -24,6 +24,8 @@ def get_status() -> dict:
     recording_path.mkdir(parents=True, exist_ok=True)
 
     free_bytes = _disk_free_bytes(str(recording_path))
+    usage = shutil.disk_usage(str(recording_path))
+    total_bytes = usage.total
     minutes_remaining = _minutes_remaining(free_bytes)
 
     card_present = os.path.exists("/proc/asound/card1") or os.path.exists(
@@ -32,10 +34,17 @@ def get_status() -> dict:
 
     current = recording_manager.current()
 
+    recordings = list_recordings()
+    recordings_bytes = sum(r.size_bytes for r in recordings)
+    recordings_count = len(recordings)
+
     return {
         "card_present": card_present,
         "recording_dir": str(recording_path),
         "free_bytes": free_bytes,
+        "total_bytes": total_bytes,
+        "recordings_bytes": recordings_bytes,
+        "recordings_count": recordings_count,
         "minutes_remaining": minutes_remaining,
         "sample_format": settings.sample_format,
         "sample_rate": settings.sample_rate,

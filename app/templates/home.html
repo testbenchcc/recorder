@@ -3,30 +3,72 @@
 {% block title %}Recorder – Home{% endblock %}
 
 {% block content %}
+<div class="row mb-3">
+  <div class="col-12">
+    <h1 class="h3 mb-1">Recorder dashboard</h1>
+    <p class="text-muted mb-0">
+      Monitor storage and control recordings from a single place.
+    </p>
+  </div>
+</div>
+
 <div class="row">
-  <div class="col-md-6 mb-3">
-    <div class="card">
-      <div class="card-header">Status</div>
+  <div class="col-lg-4 mb-3">
+    <div class="card h-100">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <span>Status</span>
+        <span id="status-badge" class="badge bg-secondary">Idle</span>
+      </div>
       <div class="card-body">
-        <p><strong>Card present:</strong> <span id="card-present">–</span></p>
-        <p>
-          <strong>Minutes remaining:</strong>
-          <span id="minutes-remaining">–</span>
-        </p>
-        <p><strong>Recording state:</strong> <span id="recording-state">–</span></p>
-        <p>
-          <strong>Current recording elapsed:</strong>
-          <span id="recording-elapsed">–</span>
+        <dl class="row mb-0">
+          <dt class="col-6 col-sm-5">Card present</dt>
+          <dd class="col-6 col-sm-7">
+            <span id="card-present">–</span>
+          </dd>
+
+          <dt class="col-6 col-sm-5">Minutes remaining</dt>
+          <dd class="col-6 col-sm-7">
+            <span id="minutes-remaining">–</span>
+          </dd>
+
+          <dt class="col-6 col-sm-5">Recording state</dt>
+          <dd class="col-6 col-sm-7">
+            <span id="recording-state">–</span>
+          </dd>
+
+          <dt class="col-6 col-sm-5">Current elapsed</dt>
+          <dd class="col-6 col-sm-7">
+            <span id="recording-elapsed">–</span>
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4 mb-3">
+    <div class="card h-100">
+      <div class="card-header">Storage overview</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <canvas id="storage-chart" height="160" aria-label="Storage usage"></canvas>
+        </div>
+        <p id="storage-summary" class="mb-0 text-muted small">
+          Calculating storage usage…
         </p>
       </div>
     </div>
   </div>
-  <div class="col-md-6 mb-3">
-    <div class="card">
+
+  <div class="col-lg-4 mb-3">
+    <div class="card h-100">
       <div class="card-header">Controls</div>
       <div class="card-body">
         <div class="mb-3">
-          <label for="duration-seconds" class="form-label">Max duration (seconds)</label>
+          <label for="duration-seconds" class="form-label"
+            >Max duration (seconds)</label
+          >
           <input
             type="number"
             class="form-control"
@@ -35,8 +77,10 @@
             placeholder="Leave empty for default"
           />
         </div>
-        <button id="start-btn" class="btn btn-success me-2">Start recording</button>
-        <button id="stop-btn" class="btn btn-danger">Stop recording</button>
+        <div class="d-flex flex-wrap gap-2">
+          <button id="start-btn" class="btn btn-success">Start recording</button>
+          <button id="stop-btn" class="btn btn-danger">Stop recording</button>
+        </div>
         <div class="mt-3" id="messages"></div>
       </div>
     </div>
@@ -44,6 +88,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="/static/js/home.js"></script>
 {% endblock %}
-
