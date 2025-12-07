@@ -14,6 +14,7 @@ const defaultConfig = {
     brightness: 20,
     color: "#ff0000",
   },
+  default_max_duration_seconds: 7200,
 };
 
 const MIN_LIGHT_BRIGHTNESS = 4;
@@ -61,20 +62,38 @@ function applyRecordingLight(config) {
   }
 }
 
+function applyDefaultMaxDuration(config) {
+  const input = document.getElementById("default-max-duration-seconds");
+  if (!input) return;
+
+  const raw =
+    (config && config.default_max_duration_seconds) ||
+    defaultConfig.default_max_duration_seconds;
+  const value = Number(raw);
+  if (Number.isFinite(value) && value > 0) {
+    input.value = value;
+  } else {
+    input.value = "";
+  }
+}
+
 async function loadConfig() {
   try {
     const res = await fetch("/ui/config");
     if (!res.ok) {
       setConfigMessage("Failed to load configuration", "danger");
       applyRecordingLight({});
+      applyDefaultMaxDuration({});
       return;
     }
     const data = await res.json();
     applyRecordingLight(data || {});
+    applyDefaultMaxDuration(data || {});
   } catch (err) {
     console.error(err);
     setConfigMessage("Error loading configuration", "danger");
     applyRecordingLight({});
+    applyDefaultMaxDuration({});
   }
 }
 
@@ -84,6 +103,21 @@ async function saveConfig(e) {
   const enabledEl = document.getElementById("light-enabled");
   const brightnessEl = document.getElementById("light-brightness");
   const colorEl = document.getElementById("light-color");
+  const defaultMaxDurationEl = document.getElementById(
+    "default-max-duration-seconds",
+  );
+
+  const defaultMaxDuration = Number.parseInt(
+    defaultMaxDurationEl.value.trim(),
+    10,
+  );
+  if (!Number.isFinite(defaultMaxDuration) || defaultMaxDuration <= 0) {
+    setConfigMessage(
+      "Default max duration must be a positive number",
+      "danger",
+    );
+    return;
+  }
 
   const payload = {
     recording_light: {
@@ -91,6 +125,7 @@ async function saveConfig(e) {
       brightness: uiValueToBrightness(brightnessEl.value),
       color: colorEl.value,
     },
+    default_max_duration_seconds: defaultMaxDuration,
   };
 
   try {

@@ -25,7 +25,7 @@ sudo apt install -y git python3-pip python3-venv \
 
 ---
 
-# **2. Install the Seeed Voicecard Driver (for KEYESTUDIO ReSpeaker HAT)**
+# **2. Install the Seeed Voicecard Driver**
 
 ```bash
 git clone https://github.com/HinTak/seeed-voicecard.git
@@ -69,6 +69,8 @@ Recording WAVE 'test.wav' : Signed 16 bit Little Endian, Rate 16000 Hz, Stereo
 Use Tailscale for SSH and serving web pages in a tailnet. 
 
 This will allow referncing the device using its tailnet name, which should be the same as the devices name, [recorder](https://recorder). It also allows for pointing a reverse proxy at the devices web interface so a domain can be used.
+
+Follow the [official guide](https://tailscale.com/kb/1197/install-rpi-bullseye)
 
 ```bash
 sudo apt-get install apt-transport-https

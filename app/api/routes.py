@@ -43,6 +43,9 @@ class AppConfig(BaseModel):
     recording_light: RecordingLightConfig = Field(
         default_factory=RecordingLightConfig
     )
+    default_max_duration_seconds: int = Field(
+        settings.max_single_recording_seconds, ge=1
+    )
 
 
 def _load_app_config() -> AppConfig:
@@ -118,7 +121,14 @@ def _display_name(path) -> str:
 
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    cfg = _load_app_config()
+    return templates.TemplateResponse(
+        "home.html",
+        {
+            "request": request,
+            "default_max_duration_seconds": cfg.default_max_duration_seconds,
+        },
+    )
 
 
 @router.get("/recordings/view", response_class=HTMLResponse)
