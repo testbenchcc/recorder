@@ -51,6 +51,14 @@ class RecordingUpdate(BaseModel):
     name: str = Field(..., max_length=200)
 
 
+def _display_name(path) -> str:
+    stem = path.stem
+    parts = stem.split("_", 2)
+    if len(parts) == 3 and parts[2]:
+        return f"{parts[2]}{path.suffix}"
+    return path.name
+
+
 @router.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
@@ -105,6 +113,7 @@ def list_recordings_endpoint(limit: int = 50, offset: int = 0) -> dict:
             {
                 "id": r.id,
                 "path": str(r.path),
+                "name": _display_name(r.path),
                 "size_bytes": r.size_bytes,
                 "duration_seconds": r.duration_seconds,
                 "created_at": r.created_at.isoformat(),
@@ -126,6 +135,7 @@ def get_recording_endpoint(recording_id: str) -> dict:
     return {
         "id": meta.id,
         "path": str(meta.path),
+        "name": _display_name(meta.path),
         "size_bytes": meta.size_bytes,
         "duration_seconds": meta.duration_seconds,
         "created_at": meta.created_at.isoformat(),
@@ -158,6 +168,7 @@ def rename_recording_endpoint(recording_id: str, payload: RecordingUpdate) -> di
     return {
         "id": meta.id,
         "path": str(meta.path),
+        "name": _display_name(meta.path),
         "size_bytes": meta.size_bytes,
         "duration_seconds": meta.duration_seconds,
         "created_at": meta.created_at.isoformat(),
