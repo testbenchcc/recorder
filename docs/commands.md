@@ -44,6 +44,42 @@ arecord -Dhw:1,0 -f S16_LE -r 48000 -c 2 test48k.wav
 
 ---
 
+# 3. Tune Recording Quality and File Size
+
+The main knobs that affect quality and storage are:
+
+- `-f` – **sample format / bit depth** (default here: `S16_LE`, 16‑bit PCM)
+- `-r` – **sample rate** in Hz (`16000`, `44100`, `48000`, …)
+- `-c` – **channel count** (`1` = mono, `2` = both WM8960 mics)
+
+Rough rule of thumb for uncompressed PCM:
+
+```text
+bytes_per_second = sample_rate * channels * 2
+bytes_per_minute ≈ bytes_per_second * 60
+```
+
+With the defaults used above:
+
+- `16000 Hz`, `2` channels, `16‑bit` → ~3.8 MiB per minute
+- `48000 Hz`, `2` channels, `16‑bit` → ~11.5 MiB per minute
+
+Example “speech quality / smaller files” profile:
+
+```bash
+arecord -Dhw:1,0 -f S16_LE -r 16000 -c 1 speech-mono.wav
+```
+
+Example “analysis / highest quality from this card” profile:
+
+```bash
+arecord -Dhw:1,0 -f S16_LE -r 48000 -c 2 analysis-stereo.wav
+```
+
+The web recorder uses the same idea: it records uncompressed PCM and lets you trade sample rate / channels for quality vs. disk usage.
+
+---
+
 # 3. Play Audio Back Through the Card
 
 ### Basic playback
@@ -200,3 +236,28 @@ sudo alsactl init
 ```
 
 Now `arecord test.wav` works without specifying `hw:1,0`.
+
+---
+
+# 11. Recorder App Configuration (Environment Variables)
+
+The FastAPI recorder service reads its audio settings from environment variables (prefix `RECORDER_`). Defaults are chosen for voice recording on a Pi Zero 2 W:
+
+- `RECORDER_SAMPLE_FORMAT` – sample format (default: `S16_LE`)
+- `RECORDER_SAMPLE_RATE` – sample rate in Hz (default: `16000`)
+- `RECORDER_CHANNELS` – number of channels (default: `2`)
+- `RECORDER_ALSA_DEVICE` – ALSA device string (default: `hw:1,0`)
+- `RECORDER_RECORDING_DIR` – directory where `.wav` files are stored (default: `recordings`)
+- `RECORDER_MAX_SINGLE_RECORDING_SECONDS` – hard cap for a single recording (default: `7200` seconds = 2 hours)
+- `RECORDER_RETENTION_HOURS` – target total hours of audio to keep before pruning oldest files (default: `48`)
+
+Example: run the API with higher‑quality audio but shorter retention:
+
+```bash
+RECORDER_SAMPLE_RATE=48000 \
+RECORDER_CHANNELS=2 \
+RECORDER_RETENTION_HOURS=12 \
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+These settings apply to both the `/recordings` API and the web UI, so the “minutes remaining” and storage charts automatically reflect your chosen quality level.
