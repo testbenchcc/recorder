@@ -80,7 +80,7 @@ def _set_ring_state(recording_active: bool, config: Dict[str, Any]) -> None:
 
     if recording_active:
         brightness = int(recording_light_cfg.get("brightness", DEFAULT_BRIGHTNESS))
-        brightness = max(0, min(100, brightness))
+        brightness = max(4, min(50, brightness))
         color_str = recording_light_cfg.get("color", "#ff0000")
         r, g, b = _parse_color(color_str)
 

@@ -35,7 +35,7 @@ CONFIG_FILE_PATH = Path(os.getenv("RECORDER_CONFIG_PATH", "config.json"))
 
 class RecordingLightConfig(BaseModel):
     enabled: bool = True
-    brightness: int = Field(20, ge=0, le=100)
+    brightness: int = Field(20, ge=4, le=50)
     color: str = "#ff0000"
 
 

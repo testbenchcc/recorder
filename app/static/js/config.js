@@ -16,6 +16,28 @@ const defaultConfig = {
   },
 };
 
+const MIN_LIGHT_BRIGHTNESS = 4;
+const MAX_LIGHT_BRIGHTNESS = 50;
+
+function brightnessToUiValue(brightness) {
+  const clamped = Math.max(
+    MIN_LIGHT_BRIGHTNESS,
+    Math.min(MAX_LIGHT_BRIGHTNESS, Number(brightness) || 0),
+  );
+  return Math.round(
+    ((clamped - MIN_LIGHT_BRIGHTNESS) * 100) /
+      (MAX_LIGHT_BRIGHTNESS - MIN_LIGHT_BRIGHTNESS),
+  );
+}
+
+function uiValueToBrightness(uiValue) {
+  const percent = Math.max(0, Math.min(100, Number(uiValue) || 0));
+  return Math.round(
+    MIN_LIGHT_BRIGHTNESS +
+      (percent * (MAX_LIGHT_BRIGHTNESS - MIN_LIGHT_BRIGHTNESS)) / 100,
+  );
+}
+
 function applyRecordingLight(config) {
   const cfg = {
     ...defaultConfig.recording_light,
@@ -28,8 +50,9 @@ function applyRecordingLight(config) {
   const colorEl = document.getElementById("light-color");
 
   enabledEl.checked = !!cfg.enabled;
-  brightnessEl.value = cfg.brightness;
-  brightnessValueEl.textContent = cfg.brightness;
+  const uiBrightness = brightnessToUiValue(cfg.brightness);
+  brightnessEl.value = uiBrightness;
+  brightnessValueEl.textContent = uiBrightness;
 
   if (typeof cfg.color === "string" && cfg.color.startsWith("#")) {
     colorEl.value = cfg.color;
@@ -65,7 +88,7 @@ async function saveConfig(e) {
   const payload = {
     recording_light: {
       enabled: enabledEl.checked,
-      brightness: Number(brightnessEl.value),
+      brightness: uiValueToBrightness(brightnessEl.value),
       color: colorEl.value,
     },
   };
@@ -102,4 +125,3 @@ window.addEventListener("DOMContentLoaded", () => {
 
   loadConfig();
 });
-

@@ -44,7 +44,7 @@ Reboot.
 from pixel_ring import pixel_ring
 import time
 
-pixel_ring.set_brightness(20)   # 0 to 100
+pixel_ring.set_brightness(20)   # 0 to 100 (recorder UI maps 0–100 to a safe 4–50 range)
 pixel_ring.set_color(r=0, g=0, b=255)
 time.sleep(2)
 
@@ -105,7 +105,7 @@ Behavior:
 Environment variables:
 
 * `RECORDER_RING_POLL_INTERVAL` – poll rate in seconds (default 1.0)
-* `RECORDER_RING_BRIGHTNESS` – brightness 0 to 100 (default 20)
+* `RECORDER_RING_BRIGHTNESS` – default recording indicator brightness (4–50, default 20)
 
 Make sure the library is installed:
 
