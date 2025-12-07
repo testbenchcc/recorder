@@ -137,16 +137,13 @@ async function refreshStatus() {
     const res = await fetch("/status");
     if (!res.ok) throw new Error("Failed to fetch status");
     const data = await res.json();
-    document.getElementById("card-present").textContent = data.card_present
-      ? "Yes"
-      : "No";
-    document.getElementById("minutes-remaining").textContent =
-      data.minutes_remaining !== null
-        ? data.minutes_remaining.toFixed(1)
-        : "–";
-    document.getElementById("recording-state").textContent = data.recording_active
-      ? "Recording"
-      : "Idle";
+    const minutesRemainingEl = document.getElementById("minutes-remaining");
+    if (minutesRemainingEl) {
+      minutesRemainingEl.textContent =
+        data.minutes_remaining !== null
+          ? data.minutes_remaining.toFixed(1)
+          : "–";
+    }
 
     const statusBadge = document.getElementById("status-badge");
     if (statusBadge) {
