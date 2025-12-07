@@ -9,6 +9,25 @@ function setRecordingsMessage(text, type = "info") {
 }
 
 let transcriptModal = null;
+let currentTranscriptRecordingId = null;
+
+function getSelectedTranscriptFormat() {
+  const select = document.getElementById("transcript-format");
+  if (!select) return null;
+  const value = (select.value || "").trim();
+  return value || null;
+}
+
+function setTranscriptLoading(loadingEl, isLoading) {
+  if (!loadingEl) return;
+  if (isLoading) {
+    loadingEl.classList.add("d-flex");
+    loadingEl.style.display = "";
+  } else {
+    loadingEl.classList.remove("d-flex");
+    loadingEl.style.display = "none";
+  }
+}
 
 async function loadRecordings() {
   try {
@@ -151,7 +170,7 @@ function playRecording(id) {
   });
 }
 
-async function transcribeRecording(id) {
+async function transcribeRecording(id, overrideFormat) {
   const modalEl = document.getElementById("transcript-modal");
   const loadingEl = document.getElementById("transcript-loading");
   const contentEl = document.getElementById("transcript-content");
@@ -170,22 +189,37 @@ async function transcribeRecording(id) {
     return;
   }
 
-  loadingEl.style.display = "flex";
+  currentTranscriptRecordingId = id;
+
+  const selectedFormat = overrideFormat || getSelectedTranscriptFormat();
+
+  setTranscriptLoading(loadingEl, true);
   contentEl.style.display = "none";
   contentEl.textContent = "";
 
   transcriptModal.show();
 
+  let errorMessage = null;
+
   try {
-    const res = await fetch(`/recordings/${id}/transcribe`, {
+    const params = new URLSearchParams();
+    if (selectedFormat) {
+      params.set("response_format", selectedFormat);
+    }
+
+    const url =
+      params.toString().length > 0
+        ? `/recordings/${id}/transcribe?${params.toString()}`
+        : `/recordings/${id}/transcribe`;
+
+    const res = await fetch(url, {
       method: "POST",
     });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      const message =
+      errorMessage =
         body.detail || `Failed to transcribe recording (${res.status})`;
-      setRecordingsMessage(message, "danger");
-      transcriptModal.hide();
+      setRecordingsMessage(errorMessage, "danger");
       return;
     }
 
@@ -193,13 +227,18 @@ async function transcribeRecording(id) {
     const content =
       data && typeof data.content === "string" ? data.content : "";
 
-    loadingEl.style.display = "none";
     contentEl.style.display = "block";
     contentEl.textContent = content || "[Empty transcription response]";
   } catch (err) {
     console.error(err);
-    setRecordingsMessage("Error requesting transcription", "danger");
-    transcriptModal.hide();
+    errorMessage = "Error requesting transcription";
+    setRecordingsMessage(errorMessage, "danger");
+  } finally {
+    setTranscriptLoading(loadingEl, false);
+    if (errorMessage && contentEl) {
+      contentEl.style.display = "block";
+      contentEl.textContent = `[${errorMessage}]`;
+    }
   }
 }
 
@@ -246,5 +285,16 @@ async function deleteRecording(id) {
 
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("refresh-btn").addEventListener("click", loadRecordings);
+  const retryBtn = document.getElementById("transcript-retry-btn");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (!currentTranscriptRecordingId) {
+        return;
+      }
+      const format = getSelectedTranscriptFormat();
+      transcribeRecording(currentTranscriptRecordingId, format);
+    });
+  }
   loadRecordings();
 });

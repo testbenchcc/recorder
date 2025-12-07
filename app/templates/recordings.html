@@ -44,7 +44,7 @@
   aria-labelledby="transcript-modal-label"
   aria-hidden="true"
 >
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable" style="max-width: 90vw;">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="transcript-modal-label">Transcription</h5>
@@ -56,9 +56,36 @@
         ></button>
       </div>
       <div class="modal-body">
+        <div class="mb-2">
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <label
+              for="transcript-format"
+              class="form-label mb-0 small me-2"
+            >
+              Response format
+            </label>
+            <select
+              id="transcript-format"
+              class="form-select form-select-sm"
+              style="width: auto; min-width: 140px;"
+            >
+              <option value="json">json</option>
+              <option value="text">text</option>
+              <option value="srt">srt</option>
+              <option value="vtt">vtt</option>
+            </select>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary"
+              id="transcript-retry-btn"
+            >
+              Resend
+            </button>
+          </div>
+        </div>
         <div
           id="transcript-loading"
-          class="d-flex align-items-center mb-2"
+          class="align-items-center mb-2"
           style="display: none;"
         >
           <div

@@ -267,7 +267,9 @@ def delete_recording_endpoint(recording_id: str) -> dict:
 
 
 @router.post("/recordings/{recording_id}/transcribe")
-def transcribe_recording_endpoint(recording_id: str) -> dict:
+def transcribe_recording_endpoint(
+    recording_id: str, response_format: Optional[str] = None
+) -> dict:
     cfg = _load_app_config()
     whisper_cfg = cfg.whisper
 
@@ -292,8 +294,13 @@ def transcribe_recording_endpoint(recording_id: str) -> dict:
         with httpx.Client(timeout=60.0) as client:
             with open(meta.path, "rb") as f:
                 files = {"file": (meta.path.name, f, "audio/wav")}
+                requested_fmt = (
+                    (response_format or whisper_cfg.response_format or "json")
+                    .strip()
+                    .lower()
+                )
                 data = {
-                    "response_format": whisper_cfg.response_format,
+                    "response_format": requested_fmt,
                     "temperature": whisper_cfg.temperature,
                     "temperature_inc": whisper_cfg.temperature_inc,
                 }
@@ -326,7 +333,11 @@ def transcribe_recording_endpoint(recording_id: str) -> dict:
         )
 
     # Normalize the response into simple text for the UI.
-    fmt = whisper_cfg.response_format or "json"
+    fmt = (
+        (response_format or whisper_cfg.response_format or "json")
+        .strip()
+        .lower()
+    )
     text_content: str
     if fmt == "json":
         try:
