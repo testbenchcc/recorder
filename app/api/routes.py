@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -263,3 +264,85 @@ def delete_recording_endpoint(recording_id: str) -> dict:
     if not deleted:
         raise HTTPException(status_code=404, detail="Recording not found")
     return {"deleted": True, "id": recording_id}
+
+
+@router.post("/recordings/{recording_id}/transcribe")
+def transcribe_recording_endpoint(recording_id: str) -> dict:
+    cfg = _load_app_config()
+    whisper_cfg = cfg.whisper
+
+    if not whisper_cfg.enabled:
+        raise HTTPException(
+            status_code=400, detail="Whisper integration is disabled in configuration"
+        )
+
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    api_base = whisper_cfg.api_url.rstrip("/")
+    if not api_base:
+        raise HTTPException(
+            status_code=400, detail="Whisper API URL is not configured"
+        )
+
+    inference_url = f"{api_base}/inference"
+
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            with open(meta.path, "rb") as f:
+                files = {"file": (meta.path.name, f, "audio/wav")}
+                data = {
+                    "response_format": whisper_cfg.response_format,
+                    "temperature": whisper_cfg.temperature,
+                    "temperature_inc": whisper_cfg.temperature_inc,
+                }
+                if whisper_cfg.model_path:
+                    data["model_path"] = whisper_cfg.model_path
+
+                response = client.post(inference_url, data=data, files=files)
+    except Exception as exc:  # pragma: no cover - network/service specific
+        logger.error("Failed to call Whisper API at %s: %s", inference_url, exc)
+        raise HTTPException(
+            status_code=502, detail="Failed to reach Whisper transcription service"
+        ) from exc
+
+    if response.status_code != 200:
+        # Try to surface any error details from the Whisper server
+        detail: str
+        try:
+            body = response.json()
+            detail = body.get("detail") or body.get("error") or response.text
+        except Exception:  # pragma: no cover - defensive
+            detail = response.text
+        logger.warning(
+            "Whisper transcription failed (%s): %s",
+            response.status_code,
+            detail,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Whisper transcription failed ({response.status_code})",
+        )
+
+    # Normalize the response into simple text for the UI.
+    fmt = whisper_cfg.response_format or "json"
+    text_content: str
+    if fmt == "json":
+        try:
+            payload = response.json()
+        except Exception:  # pragma: no cover - defensive
+            payload = response.text
+        if isinstance(payload, (dict, list)):
+            text_content = json.dumps(payload, indent=2, ensure_ascii=False)
+        else:
+            text_content = str(payload)
+    else:
+        # For text, srt, vtt, etc. treat as plain text content.
+        text_content = response.text
+
+    return {
+        "id": recording_id,
+        "format": fmt,
+        "content": text_content,
+    }

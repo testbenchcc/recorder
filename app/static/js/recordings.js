@@ -8,6 +8,8 @@ function setRecordingsMessage(text, type = "info") {
   container.appendChild(div);
 }
 
+let transcriptModal = null;
+
 async function loadRecordings() {
   try {
     const res = await fetch("/recordings?limit=200");
@@ -81,6 +83,17 @@ async function loadRecordings() {
       downloadLink.setAttribute("download", fileName);
       downloadLi.appendChild(downloadLink);
 
+      const transcribeLi = document.createElement("li");
+      const transcribeBtn = document.createElement("button");
+      transcribeBtn.type = "button";
+      transcribeBtn.className = "dropdown-item";
+      transcribeBtn.textContent = "Transcribe";
+      transcribeBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        transcribeRecording(item.id);
+      });
+      transcribeLi.appendChild(transcribeBtn);
+
       const renameLi = document.createElement("li");
       const renameBtn = document.createElement("button");
       renameBtn.type = "button";
@@ -105,6 +118,7 @@ async function loadRecordings() {
 
       menu.appendChild(playLi);
       menu.appendChild(downloadLi);
+      menu.appendChild(transcribeLi);
       menu.appendChild(renameLi);
       menu.appendChild(deleteLi);
 
@@ -135,6 +149,58 @@ function playRecording(id) {
     console.error(err);
     setRecordingsMessage("Unable to play recording", "danger");
   });
+}
+
+async function transcribeRecording(id) {
+  const modalEl = document.getElementById("transcript-modal");
+  const loadingEl = document.getElementById("transcript-loading");
+  const contentEl = document.getElementById("transcript-content");
+
+  if (!modalEl || !loadingEl || !contentEl) {
+    setRecordingsMessage("Transcription UI is not available", "danger");
+    return;
+  }
+
+  if (!transcriptModal && typeof bootstrap !== "undefined") {
+    transcriptModal = new bootstrap.Modal(modalEl);
+  }
+
+  if (!transcriptModal) {
+    setRecordingsMessage("Unable to open transcription dialog", "danger");
+    return;
+  }
+
+  loadingEl.style.display = "flex";
+  contentEl.style.display = "none";
+  contentEl.textContent = "";
+
+  transcriptModal.show();
+
+  try {
+    const res = await fetch(`/recordings/${id}/transcribe`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const message =
+        body.detail || `Failed to transcribe recording (${res.status})`;
+      setRecordingsMessage(message, "danger");
+      transcriptModal.hide();
+      return;
+    }
+
+    const data = await res.json();
+    const content =
+      data && typeof data.content === "string" ? data.content : "";
+
+    loadingEl.style.display = "none";
+    contentEl.style.display = "block";
+    contentEl.textContent = content || "[Empty transcription response]";
+  } catch (err) {
+    console.error(err);
+    setRecordingsMessage("Error requesting transcription", "danger");
+    transcriptModal.hide();
+  }
 }
 
 async function renameRecording(id) {

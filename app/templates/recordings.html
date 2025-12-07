@@ -36,9 +36,58 @@
     <audio id="player" controls class="w-100" style="display: none;"></audio>
   </div>
 </div>
+
+<div
+  class="modal fade"
+  id="transcript-modal"
+  tabindex="-1"
+  aria-labelledby="transcript-modal-label"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="transcript-modal-label">Transcription</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body">
+        <div
+          id="transcript-loading"
+          class="d-flex align-items-center mb-2"
+          style="display: none;"
+        >
+          <div
+            class="spinner-border spinner-border-sm me-2"
+            role="status"
+            aria-hidden="true"
+          ></div>
+          <span>Transcribing recording…</span>
+        </div>
+        <pre
+          id="transcript-content"
+          class="small"
+          style="display: none; white-space: pre-wrap;"
+        ></pre>
+      </div>
+      <div class="modal-footer">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-bs-dismiss="modal"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/recordings.js"></script>
 {% endblock %}
-
