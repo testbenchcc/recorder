@@ -115,6 +115,7 @@ async function loadRecordings() {
       sizeTd.textContent = (item.size_bytes / 1024).toFixed(1);
 
       const nameTd = document.createElement("td");
+      nameTd.className = "text-break";
       const fileName = item.name || item.path.split("/").slice(-1)[0];
       nameTd.textContent = fileName;
 

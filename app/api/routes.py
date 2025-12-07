@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -125,8 +126,28 @@ class RecordingUpdate(BaseModel):
 def _display_name(path) -> str:
     stem = path.stem
     parts = stem.split("_", 2)
+
+    # If the file has a user-provided slug, prefer that as the visible name.
     if len(parts) == 3 and parts[2]:
         return f"{parts[2]}{path.suffix}"
+
+    # For default names without a slug, show a shorter, more readable
+    # timestamp-based name like 01012026_141501.wav instead of the full
+    # internal id-bearing filename.
+    if parts:
+        ts_raw = parts[0]
+        dt = None
+        for fmt in ("%Y%m%dT%H%M%S", "%Y%m%d%H%M%S"):
+            try:
+                dt = datetime.strptime(ts_raw, fmt)
+                break
+            except ValueError:
+                continue
+        if dt is not None:
+            pretty = dt.strftime("%m%d%Y_%H%M%S")
+            return f"{pretty}{path.suffix}"
+
+    # Fallback to the raw filename if we can't parse the timestamp.
     return path.name
 
 
