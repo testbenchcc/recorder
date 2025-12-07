@@ -1,3 +1,7 @@
+import json
+import logging
+import os
+from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request
@@ -23,6 +27,47 @@ from app.core.recording import (
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
+logger = logging.getLogger(__name__)
+
+
+CONFIG_FILE_PATH = Path(os.getenv("RECORDER_CONFIG_PATH", "config.json"))
+
+
+class RecordingLightConfig(BaseModel):
+    enabled: bool = True
+    brightness: int = Field(20, ge=0, le=100)
+    color: str = "#ff0000"
+
+
+class AppConfig(BaseModel):
+    recording_light: RecordingLightConfig = Field(
+        default_factory=RecordingLightConfig
+    )
+
+
+def _load_app_config() -> AppConfig:
+    if not CONFIG_FILE_PATH.exists():
+        return AppConfig()
+    try:
+        raw = CONFIG_FILE_PATH.read_text(encoding="utf-8")
+        data = json.loads(raw)
+        return AppConfig(**data)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to load config from %s: %s", CONFIG_FILE_PATH, exc)
+        return AppConfig()
+
+
+def _save_app_config(cfg: AppConfig) -> None:
+    try:
+        CONFIG_FILE_PATH.write_text(
+            json.dumps(cfg.model_dump(), indent=2), encoding="utf-8"
+        )
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error("Failed to save config to %s: %s", CONFIG_FILE_PATH, exc)
+        raise HTTPException(
+            status_code=500, detail="Failed to save configuration"
+        ) from exc
+
 
 @router.get("/healthz")
 def healthz() -> dict:
@@ -47,6 +92,18 @@ def config() -> dict:
     }
 
 
+@router.get("/ui/config")
+def get_ui_config() -> dict:
+    cfg = _load_app_config()
+    return cfg.model_dump()
+
+
+@router.post("/ui/config")
+def update_ui_config(payload: AppConfig) -> dict:
+    _save_app_config(payload)
+    return {"ok": True}
+
+
 class RecordingUpdate(BaseModel):
     name: str = Field(..., max_length=200)
 
@@ -67,6 +124,11 @@ def home(request: Request):
 @router.get("/recordings/view", response_class=HTMLResponse)
 def recordings_page(request: Request):
     return templates.TemplateResponse("recordings.html", {"request": request})
+
+
+@router.get("/config/view", response_class=HTMLResponse)
+def config_page(request: Request):
+    return templates.TemplateResponse("config.html", {"request": request})
 
 
 @router.post("/recordings/start")

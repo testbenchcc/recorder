@@ -1,0 +1,105 @@
+function setConfigMessage(text, type = "info") {
+  const container = document.getElementById("config-messages");
+  container.innerHTML = "";
+  if (!text) return;
+  const div = document.createElement("div");
+  div.className = `alert alert-${type} py-1 mb-1`;
+  div.textContent = text;
+  container.appendChild(div);
+}
+
+const defaultConfig = {
+  recording_light: {
+    enabled: true,
+    brightness: 20,
+    color: "#ff0000",
+  },
+};
+
+function applyRecordingLight(config) {
+  const cfg = {
+    ...defaultConfig.recording_light,
+    ...(config.recording_light || {}),
+  };
+
+  const enabledEl = document.getElementById("light-enabled");
+  const brightnessEl = document.getElementById("light-brightness");
+  const brightnessValueEl = document.getElementById("light-brightness-value");
+  const colorEl = document.getElementById("light-color");
+
+  enabledEl.checked = !!cfg.enabled;
+  brightnessEl.value = cfg.brightness;
+  brightnessValueEl.textContent = cfg.brightness;
+
+  if (typeof cfg.color === "string" && cfg.color.startsWith("#")) {
+    colorEl.value = cfg.color;
+  } else {
+    colorEl.value = defaultConfig.recording_light.color;
+  }
+}
+
+async function loadConfig() {
+  try {
+    const res = await fetch("/ui/config");
+    if (!res.ok) {
+      setConfigMessage("Failed to load configuration", "danger");
+      applyRecordingLight({});
+      return;
+    }
+    const data = await res.json();
+    applyRecordingLight(data || {});
+  } catch (err) {
+    console.error(err);
+    setConfigMessage("Error loading configuration", "danger");
+    applyRecordingLight({});
+  }
+}
+
+async function saveConfig(e) {
+  e.preventDefault();
+
+  const enabledEl = document.getElementById("light-enabled");
+  const brightnessEl = document.getElementById("light-brightness");
+  const colorEl = document.getElementById("light-color");
+
+  const payload = {
+    recording_light: {
+      enabled: enabledEl.checked,
+      brightness: Number(brightnessEl.value),
+      color: colorEl.value,
+    },
+  };
+
+  try {
+    const res = await fetch("/ui/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const message = body.detail || `Failed to save configuration (${res.status})`;
+      setConfigMessage(message, "danger");
+      return;
+    }
+    setConfigMessage("Configuration saved", "success");
+  } catch (err) {
+    console.error(err);
+    setConfigMessage("Error saving configuration", "danger");
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("config-form");
+  const brightnessEl = document.getElementById("light-brightness");
+  const brightnessValueEl = document.getElementById("light-brightness-value");
+
+  form.addEventListener("submit", saveConfig);
+
+  brightnessEl.addEventListener("input", () => {
+    brightnessValueEl.textContent = brightnessEl.value;
+  });
+
+  loadConfig();
+});
+
