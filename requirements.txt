@@ -4,3 +4,5 @@ pydantic-settings
 pytest
 httpx
 jinja2
+pixel-ring
+RPi.GPIO
