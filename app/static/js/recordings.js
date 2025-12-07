@@ -296,5 +296,27 @@ window.addEventListener("DOMContentLoaded", () => {
       transcribeRecording(currentTranscriptRecordingId, format);
     });
   }
+  // Initialize transcript format select from configured default, if available.
+  const formatSelect = document.getElementById("transcript-format");
+  if (formatSelect) {
+    fetch("/ui/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !data.whisper) return;
+        const raw = data.whisper.response_format;
+        if (!raw) return;
+        const fmt = String(raw).trim().toLowerCase();
+        if (!fmt) return;
+        for (const option of formatSelect.options) {
+          if (option.value === fmt) {
+            formatSelect.value = fmt;
+            break;
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load UI config for transcript format", err);
+      });
+  }
   loadRecordings();
 });
