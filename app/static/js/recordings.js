@@ -52,11 +52,12 @@ function updateTranscriptElapsed() {
   const minutesText = `${minutes}m`;
   const secondsText = `${remainingSeconds.toString().padStart(2, "0")}s`;
 
-  if (seconds < 15) {
-    setTranscriptStatusText("Uploading audio to transcription server…");
+  const cycle = Math.floor(seconds / 10) % 2;
+  if (cycle === 0) {
+    setTranscriptStatusText("Uploading and processing audio now");
   } else {
     setTranscriptStatusText(
-      "Waiting for transcription server to finish processing…",
+      "This may take a while. Please be patient.",
     );
   }
 
