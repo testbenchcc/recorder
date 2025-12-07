@@ -39,6 +39,42 @@ function formatDurationFromMinutes(totalMinutes) {
   return parts.join(" ");
 }
 
+function formatElapsedDurationFromSeconds(totalSeconds) {
+  if (!Number.isFinite(totalSeconds) || totalSeconds < 0) {
+    return "–";
+  }
+
+  const secondsTotal = Math.floor(totalSeconds);
+  const secondsInMinute = 60;
+  const secondsInHour = 60 * secondsInMinute;
+  const secondsInDay = 24 * secondsInHour;
+
+  const days = Math.floor(secondsTotal / secondsInDay);
+  const hours = Math.floor((secondsTotal % secondsInDay) / secondsInHour);
+  const minutes = Math.floor(
+    (secondsTotal % secondsInHour) / secondsInMinute,
+  );
+  const seconds = secondsTotal % secondsInMinute;
+
+  const parts = [];
+
+  if (days > 0) {
+    parts.push(`${days}d`);
+  }
+
+  if (secondsTotal >= secondsInHour || days > 0) {
+    parts.push(`${hours}h`);
+  }
+
+  if (secondsTotal >= secondsInMinute || hours > 0 || days > 0) {
+    parts.push(`${minutes}m`);
+  }
+
+  parts.push(`${seconds}s`);
+
+  return parts.join(" ");
+}
+
 function updateElapsed() {
   const el = document.getElementById("recording-elapsed");
   if (!el) {
@@ -51,7 +87,7 @@ function updateElapsed() {
   const start = new Date(currentStartedAt);
   const now = new Date();
   const seconds = Math.max(0, Math.floor((now - start) / 1000));
-  el.textContent = formatDurationFromMinutes(seconds / 60);
+  el.textContent = formatElapsedDurationFromSeconds(seconds);
 }
 
 function formatBytes(bytes) {
