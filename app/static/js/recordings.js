@@ -42,13 +42,20 @@ async function loadRecordings() {
       sizeTd.textContent = (item.size_bytes / 1024).toFixed(1);
 
       const nameTd = document.createElement("td");
-      nameTd.textContent = item.path.split("/").slice(-1)[0];
+      const fileName = item.path.split("/").slice(-1)[0];
+      nameTd.textContent = fileName;
 
       const actionsTd = document.createElement("td");
       const playBtn = document.createElement("button");
       playBtn.className = "btn btn-sm btn-outline-primary me-1";
       playBtn.textContent = "Play";
       playBtn.addEventListener("click", () => playRecording(item.id));
+
+      const downloadBtn = document.createElement("a");
+      downloadBtn.className = "btn btn-sm btn-outline-success me-1";
+      downloadBtn.textContent = "Download";
+      downloadBtn.href = `/recordings/${item.id}/stream`;
+      downloadBtn.setAttribute("download", fileName);
 
       const renameBtn = document.createElement("button");
       renameBtn.className = "btn btn-sm btn-outline-secondary me-1";
@@ -61,6 +68,7 @@ async function loadRecordings() {
       deleteBtn.addEventListener("click", () => deleteRecording(item.id));
 
       actionsTd.appendChild(playBtn);
+      actionsTd.appendChild(downloadBtn);
       actionsTd.appendChild(renameBtn);
       actionsTd.appendChild(deleteBtn);
 
@@ -133,4 +141,3 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("refresh-btn").addEventListener("click", loadRecordings);
   loadRecordings();
 });
-
