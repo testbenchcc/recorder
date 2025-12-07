@@ -41,6 +41,9 @@ function formatDurationFromMinutes(totalMinutes) {
 
 function updateElapsed() {
   const el = document.getElementById("recording-elapsed");
+  if (!el) {
+    return;
+  }
   if (!currentStartedAt) {
     el.textContent = "–";
     return;
