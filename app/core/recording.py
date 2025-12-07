@@ -111,12 +111,10 @@ def get_recording(recording_id: str) -> Optional[RecordingMetadata]:
     if not root.exists():
         return None
 
-    pattern = f"*_{recording_id}"  # may have extra suffix before .wav
     for path in root.rglob("*.wav"):
-        if Path(path).stem.endswith(recording_id) or re.search(pattern, Path(path).stem):
-            meta = _metadata_for_path(path)
-            if meta is not None and meta.id == recording_id:
-                return meta
+        meta = _metadata_for_path(path)
+        if meta is not None and meta.id == recording_id:
+            return meta
     return None
 
 
