@@ -6,10 +6,11 @@
 <div class="row">
   <div class="col-md-8">
     <div class="card">
-      <div class="card-header">Recording light</div>
+      <div class="card-header">Configuration</div>
       <div class="card-body">
         <div id="config-messages" class="mb-2"></div>
         <form id="config-form">
+          <h5 class="mb-3">Recording light</h5>
           <div class="form-check form-switch mb-3">
             <input
               class="form-check-input"
@@ -45,6 +46,96 @@
               value="#ff0000"
               title="Choose recording light color"
             />
+          </div>
+          <hr />
+          <h5 class="mb-3">Whisper transcription server</h5>
+          <div class="form-check form-switch mb-3">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="whisper-enabled"
+            />
+            <label class="form-check-label" for="whisper-enabled">
+              Enable Whisper integration
+            </label>
+          </div>
+          <div class="mb-3">
+            <label for="whisper-api-url" class="form-label">
+              API server URL
+            </label>
+            <input
+              type="url"
+              class="form-control"
+              id="whisper-api-url"
+              placeholder="http://127.0.0.1:8093"
+            />
+            <div class="form-text">
+              Base URL of your Whisper.cpp server (without the <code>/inference</code> or <code>/load</code> path).
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="whisper-response-format" class="form-label">
+              Default response format
+            </label>
+            <select
+              class="form-select"
+              id="whisper-response-format"
+            >
+              <option value="json">json</option>
+              <option value="text">text</option>
+              <option value="srt">srt</option>
+              <option value="vtt">vtt</option>
+            </select>
+            <div class="form-text">
+              Must match the <code>response_format</code> supported by your Whisper server.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="whisper-temperature" class="form-label">
+              Default temperature
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="2"
+              class="form-control"
+              id="whisper-temperature"
+            />
+            <div class="form-text">
+              Maps to the <code>temperature</code> parameter for <code>/inference</code>.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="whisper-temperature-inc" class="form-label">
+              Default temperature increment
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="2"
+              class="form-control"
+              id="whisper-temperature-inc"
+            />
+            <div class="form-text">
+              Maps to the <code>temperature_inc</code> parameter for <code>/inference</code>.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="whisper-model-path" class="form-label">
+              Default model path
+            </label>
+            <input
+              type="text"
+              class="form-control"
+              id="whisper-model-path"
+              placeholder="/path/to/model.bin"
+            />
+            <div class="form-text">
+              Optional default path for the model to load via the <code>/load</code> endpoint.
+            </div>
           </div>
           <hr />
           <div class="mb-3">

@@ -39,6 +39,15 @@ class RecordingLightConfig(BaseModel):
     color: str = "#ff0000"
 
 
+class WhisperConfig(BaseModel):
+    enabled: bool = False
+    api_url: str = "http://127.0.0.1:8093"
+    response_format: str = "json"
+    temperature: float = Field(0.0, ge=0.0, le=2.0)
+    temperature_inc: float = Field(0.2, ge=0.0, le=2.0)
+    model_path: str = ""
+
+
 class AppConfig(BaseModel):
     recording_light: RecordingLightConfig = Field(
         default_factory=RecordingLightConfig
@@ -46,6 +55,7 @@ class AppConfig(BaseModel):
     default_max_duration_seconds: int = Field(
         settings.max_single_recording_seconds, ge=1
     )
+    whisper: WhisperConfig = Field(default_factory=WhisperConfig)
 
 
 def _load_app_config() -> AppConfig:
