@@ -36,20 +36,101 @@ def _start_recording() -> None:
 
     if response.status_code == 200:
         data = response.json()
-        logger.info("Recording started (id=%s, path=%s)", data.get("id"), data.get("path"))
+        logger.info(
+            "Recording started (id=%s, path=%s)",
+            data.get("id"),
+            data.get("path"),
+        )
     else:
         try:
             detail = response.json().get("detail")
         except Exception:  # pragma: no cover - defensive
             detail = response.text
         logger.warning(
-            "Start recording failed (%s): %s", response.status_code, detail
+            "Start recording failed (%s): %s",
+            response.status_code,
+            detail,
         )
+
+
+def _stop_recording() -> None:
+    url = f"{API_BASE_URL.rstrip('/')}/recordings/stop"
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            response = client.post(url)
+    except Exception as exc:  # pragma: no cover - network/device specific
+        logger.error("Failed to call API %s: %s", url, exc)
+        return
+
+    if response.status_code == 200:
+        data = response.json()
+        if data.get("stopped"):
+            logger.info(
+                "Recording stopped (id=%s, path=%s)",
+                data.get("id"),
+                data.get("path"),
+            )
+        else:
+            logger.info(
+                "Stop recording requested but no active recording (reason=%s)",
+                data.get("reason"),
+            )
+    else:
+        try:
+            detail = response.json().get("detail")
+        except Exception:  # pragma: no cover - defensive
+            detail = response.text
+        logger.warning(
+            "Stop recording failed (%s): %s",
+            response.status_code,
+            detail,
+        )
+
+
+def _get_recording_active() -> bool | None:
+    """Return True if a recording is active, False if not, or None on error."""
+    url = f"{API_BASE_URL.rstrip('/')}/status"
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            response = client.get(url)
+    except Exception as exc:  # pragma: no cover - network/device specific
+        logger.error("Failed to call API %s: %s", url, exc)
+        return None
+
+    if response.status_code != 200:
+        try:
+            detail = response.json().get("detail")
+        except Exception:  # pragma: no cover - defensive
+            detail = response.text
+        logger.warning(
+            "Status check failed (%s): %s",
+            response.status_code,
+            detail,
+        )
+        return None
+
+    try:
+        data = response.json()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Failed to parse status response JSON: %s", exc)
+        return None
+
+    return bool(data.get("recording_active"))
 
 
 def _button_callback(channel: int) -> None:
     logger.info("Button pressed on GPIO %s", channel)
-    _start_recording()
+    active = _get_recording_active()
+
+    if active is None:
+        logger.info("Recording status unknown; defaulting to start")
+        _start_recording()
+    elif active:
+        logger.info("Recording active – stopping")
+        _stop_recording()
+    else:
+        logger.info("Recording inactive – starting")
+        _start_recording()
 
 
 def _cleanup(signum=None, frame=None) -> None:  # pragma: no cover - signal handler
@@ -95,4 +176,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
