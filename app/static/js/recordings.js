@@ -46,31 +46,72 @@ async function loadRecordings() {
       nameTd.textContent = fileName;
 
       const actionsTd = document.createElement("td");
+      actionsTd.className = "text-end";
+
+      const dropdownWrapper = document.createElement("div");
+      dropdownWrapper.className = "btn-group";
+
+      const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
+      toggleBtn.className =
+        "btn btn-sm btn-outline-secondary dropdown-toggle";
+      toggleBtn.setAttribute("data-bs-toggle", "dropdown");
+      toggleBtn.setAttribute("aria-expanded", "false");
+      toggleBtn.textContent = "Actions";
+
+      const menu = document.createElement("ul");
+      menu.className = "dropdown-menu dropdown-menu-end";
+
+      const playLi = document.createElement("li");
       const playBtn = document.createElement("button");
-      playBtn.className = "btn btn-sm btn-outline-primary me-1";
+      playBtn.type = "button";
+      playBtn.className = "dropdown-item";
       playBtn.textContent = "Play";
-      playBtn.addEventListener("click", () => playRecording(item.id));
+      playBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        playRecording(item.id);
+      });
+      playLi.appendChild(playBtn);
 
-      const downloadBtn = document.createElement("a");
-      downloadBtn.className = "btn btn-sm btn-outline-success me-1";
-      downloadBtn.textContent = "Download";
-      downloadBtn.href = `/recordings/${item.id}/stream`;
-      downloadBtn.setAttribute("download", fileName);
+      const downloadLi = document.createElement("li");
+      const downloadLink = document.createElement("a");
+      downloadLink.className = "dropdown-item";
+      downloadLink.textContent = "Download";
+      downloadLink.href = `/recordings/${item.id}/stream`;
+      downloadLink.setAttribute("download", fileName);
+      downloadLi.appendChild(downloadLink);
 
+      const renameLi = document.createElement("li");
       const renameBtn = document.createElement("button");
-      renameBtn.className = "btn btn-sm btn-outline-secondary me-1";
+      renameBtn.type = "button";
+      renameBtn.className = "dropdown-item";
       renameBtn.textContent = "Rename";
-      renameBtn.addEventListener("click", () => renameRecording(item.id));
+      renameBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        renameRecording(item.id);
+      });
+      renameLi.appendChild(renameBtn);
 
+      const deleteLi = document.createElement("li");
       const deleteBtn = document.createElement("button");
-      deleteBtn.className = "btn btn-sm btn-outline-danger";
+      deleteBtn.type = "button";
+      deleteBtn.className = "dropdown-item text-danger";
       deleteBtn.textContent = "Delete";
-      deleteBtn.addEventListener("click", () => deleteRecording(item.id));
+      deleteBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        deleteRecording(item.id);
+      });
+      deleteLi.appendChild(deleteBtn);
 
-      actionsTd.appendChild(playBtn);
-      actionsTd.appendChild(downloadBtn);
-      actionsTd.appendChild(renameBtn);
-      actionsTd.appendChild(deleteBtn);
+      menu.appendChild(playLi);
+      menu.appendChild(downloadLi);
+      menu.appendChild(renameLi);
+      menu.appendChild(deleteLi);
+
+      dropdownWrapper.appendChild(toggleBtn);
+      dropdownWrapper.appendChild(menu);
+
+      actionsTd.appendChild(dropdownWrapper);
 
       tr.appendChild(createdTd);
       tr.appendChild(durationTd);
