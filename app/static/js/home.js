@@ -12,6 +12,33 @@ function setMessage(text, type = "info") {
   container.appendChild(div);
 }
 
+function formatDurationFromMinutes(totalMinutes) {
+  if (!Number.isFinite(totalMinutes) || totalMinutes < 0) {
+    return "–";
+  }
+
+  const minutesTotal = Math.floor(totalMinutes);
+  const minutesInDay = 24 * 60;
+
+  const days = Math.floor(minutesTotal / minutesInDay);
+  const hours = Math.floor((minutesTotal % minutesInDay) / 60);
+  const minutes = minutesTotal % 60;
+
+  const parts = [];
+
+  if (days > 0) {
+    parts.push(`${days}d`);
+  }
+
+  if (minutesTotal > 60 || hours > 0 || days > 0) {
+    parts.push(`${hours}h`);
+  }
+
+  parts.push(`${minutes}m`);
+
+  return parts.join(" ");
+}
+
 function updateElapsed() {
   const el = document.getElementById("recording-elapsed");
   if (!currentStartedAt) {
@@ -21,7 +48,7 @@ function updateElapsed() {
   const start = new Date(currentStartedAt);
   const now = new Date();
   const seconds = Math.max(0, Math.floor((now - start) / 1000));
-  el.textContent = `${seconds}s`;
+  el.textContent = formatDurationFromMinutes(seconds / 60);
 }
 
 function formatBytes(bytes) {
@@ -139,10 +166,16 @@ async function refreshStatus() {
     const data = await res.json();
     const minutesRemainingEl = document.getElementById("minutes-remaining");
     if (minutesRemainingEl) {
-      minutesRemainingEl.textContent =
-        data.minutes_remaining !== null
-          ? data.minutes_remaining.toFixed(1)
-          : "–";
+      if (
+        data.minutes_remaining !== null &&
+        Number.isFinite(data.minutes_remaining)
+      ) {
+        minutesRemainingEl.textContent = formatDurationFromMinutes(
+          data.minutes_remaining,
+        );
+      } else {
+        minutesRemainingEl.textContent = "–";
+      }
     }
 
     const statusBadge = document.getElementById("status-badge");
