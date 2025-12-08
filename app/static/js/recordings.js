@@ -155,28 +155,36 @@ function appendTranscriptChatMessage(content, segmentIndex, start, end) {
   const wrapper = document.createElement("div");
   wrapper.className = "mb-2";
 
-  const header = document.createElement("div");
-  header.className = "text-muted small";
+  const showTimestampsEl = document.getElementById(
+    "transcript-show-segment-timestamps",
+  );
+  const showTimestamps =
+    !showTimestampsEl || !!showTimestampsEl.checked;
 
-  let label = "Segment";
-  if (typeof segmentIndex === "number" && Number.isFinite(segmentIndex)) {
-    label += ` ${segmentIndex + 1}`;
+  if (showTimestamps) {
+    const header = document.createElement("div");
+    header.className = "text-muted small";
+
+    let label = "Segment";
+    if (typeof segmentIndex === "number" && Number.isFinite(segmentIndex)) {
+      label += ` ${segmentIndex + 1}`;
+    }
+    if (
+      typeof start === "number" &&
+      Number.isFinite(start) &&
+      typeof end === "number" &&
+      Number.isFinite(end)
+    ) {
+      label += ` (${start.toFixed(1)}s – ${end.toFixed(1)}s)`;
+    }
+    header.textContent = label;
+    wrapper.appendChild(header);
   }
-  if (
-    typeof start === "number" &&
-    Number.isFinite(start) &&
-    typeof end === "number" &&
-    Number.isFinite(end)
-  ) {
-    label += ` (${start.toFixed(1)}s – ${end.toFixed(1)}s)`;
-  }
-  header.textContent = label;
 
   const body = document.createElement("div");
   body.className = "border rounded px-2 py-1 bg-light";
   body.textContent = content || "[Empty transcription response]";
 
-  wrapper.appendChild(header);
   wrapper.appendChild(body);
   chatEl.appendChild(wrapper);
 
@@ -344,8 +352,11 @@ async function transcribeRecordingVadSequential(id) {
 
   transcriptChatAutoScroll = true;
 
+  // For VAD + Sequential, default segment response to plain text
+  // regardless of the configured default, unless the user explicitly
+  // selected another concrete format.
+  let segmentResponseFormat = "text";
   const selectedFormat = getSelectedTranscriptFormat();
-  let segmentResponseFormat = null;
   if (
     selectedFormat &&
     selectedFormat !== "vad_sequential"
@@ -439,9 +450,8 @@ async function transcribeRecordingVadSequential(id) {
     }
 
     if (!errorMessage && transcriptCompletedSegments === segments.length) {
-      setTranscriptStatusText(
-        `Completed processing ${segments.length} segments.`,
-      );
+      resetTranscriptProgressUI();
+      setTranscriptStatusText("");
     }
   } catch (err) {
     console.error(err);
@@ -607,8 +617,17 @@ window.addEventListener("DOMContentLoaded", () => {
       transcriptChatAutoScroll = nearBottom;
     });
   }
-  // Initialize transcript format select from configured default, if available.
   const formatSelect = document.getElementById("transcript-format");
+  const updateVadOptionsVisibility = () => {
+    const vadOptions = document.getElementById("transcript-vad-options");
+    if (!formatSelect || !vadOptions) return;
+    const value = (formatSelect.value || "").trim().toLowerCase();
+    vadOptions.style.display = value === "vad_sequential" ? "" : "none";
+  };
+  if (formatSelect) {
+    formatSelect.addEventListener("change", updateVadOptionsVisibility);
+  }
+  // Initialize transcript format select from configured default, if available.
   if (formatSelect) {
     fetch("/ui/config")
       .then((res) => (res.ok ? res.json() : null))
@@ -624,6 +643,7 @@ window.addEventListener("DOMContentLoaded", () => {
             break;
           }
         }
+        updateVadOptionsVisibility();
       })
       .catch((err) => {
         console.error("Failed to load UI config for transcript format", err);
