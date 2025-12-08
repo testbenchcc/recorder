@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     vad_binary: str = "vad-speech-segments"
     vad_model_path: str = ""
     vad_threads: int = 4
-    debug_vad_segments: bool = False
+    debug_vad_segments: bool = True
 
     class Config:
         env_prefix = "RECORDER_"
