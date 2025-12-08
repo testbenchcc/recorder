@@ -368,7 +368,6 @@ async function transcribeRecordingVadSequential(id) {
   // For VAD + Sequential, default segment response to plain text
   // regardless of the configured default, unless the user explicitly
   // selected another concrete format.
-  const newlinePerResponse = shouldUseNewlinePerResponse();
   let segmentResponseFormat = "text";
   const selectedFormat = getSelectedTranscriptFormat();
   if (
@@ -459,10 +458,12 @@ async function transcribeRecordingVadSequential(id) {
       const content =
         data && typeof data.content === "string" ? data.content : "";
 
+      const newlinePerResponse = shouldUseNewlinePerResponse();
       if (newlinePerResponse) {
         appendTranscriptChatMessage(content, i, seg.start, seg.end);
       } else {
         contentEl.style.display = "block";
+        contentEl.classList.add("border", "rounded", "px-2", "py-1", "bg-light");
         const existing = contentEl.textContent || "";
         let addition = content || "";
         // In paragraph mode, collapse all whitespace (including newlines)
@@ -690,7 +691,7 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (newlineEl.checked) {
+    if (!newlineEl.checked) {
       timestampsEl.checked = false;
       timestampsEl.disabled = true;
     } else {
