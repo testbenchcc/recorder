@@ -451,8 +451,18 @@ async function transcribeRecordingVadSequential(id) {
       } else {
         contentEl.style.display = "block";
         const existing = contentEl.textContent || "";
-        const addition = content || "";
-        contentEl.textContent = existing ? `${existing}${addition}` : addition;
+        let addition = content || "";
+        // In paragraph mode, collapse all whitespace (including newlines)
+        // into single spaces so the text reads as one flowing paragraph.
+        addition = addition.replace(/\s+/g, " ").trim();
+        if (!addition) {
+          continue;
+        }
+        const needsSpace =
+          existing && !existing.endsWith(" ") && !addition.startsWith(" ");
+        contentEl.textContent = existing
+          ? `${existing}${needsSpace ? " " : ""}${addition}`
+          : addition;
       }
 
       completed += 1;
@@ -631,12 +641,41 @@ window.addEventListener("DOMContentLoaded", () => {
       transcriptChatAutoScroll = nearBottom;
     });
   }
+  const newlineEl = document.getElementById("transcript-per-response-newline");
+  if (newlineEl) {
+    newlineEl.addEventListener("change", () => {
+      // Re-run visibility logic to also toggle timestamp checkbox state.
+      const formatSelectLocal = document.getElementById("transcript-format");
+      if (!formatSelectLocal) return;
+      const event = new Event("change");
+      formatSelectLocal.dispatchEvent(event);
+    });
+  }
   const formatSelect = document.getElementById("transcript-format");
   const updateVadOptionsVisibility = () => {
     const vadOptions = document.getElementById("transcript-vad-options");
+    const timestampsEl = document.getElementById(
+      "transcript-show-segment-timestamps",
+    );
+    const newlineEl = document.getElementById("transcript-per-response-newline");
     if (!formatSelect || !vadOptions) return;
     const value = (formatSelect.value || "").trim().toLowerCase();
-    vadOptions.style.display = value === "vad_sequential" ? "" : "none";
+    const isVad = value === "vad_sequential";
+    vadOptions.style.display = isVad ? "" : "none";
+
+    if (!timestampsEl || !newlineEl) return;
+
+    if (!isVad) {
+      timestampsEl.disabled = false;
+      return;
+    }
+
+    if (newlineEl.checked) {
+      timestampsEl.checked = false;
+      timestampsEl.disabled = true;
+    } else {
+      timestampsEl.disabled = false;
+    }
   };
   if (formatSelect) {
     formatSelect.addEventListener("change", updateVadOptionsVisibility);
