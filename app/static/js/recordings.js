@@ -144,6 +144,12 @@ function resetTranscriptChat() {
   transcriptChatAutoScroll = true;
 }
 
+function shouldUseNewlinePerResponse() {
+  const el = document.getElementById("transcript-per-response-newline");
+  if (!el) return true;
+  return !!el.checked;
+}
+
 function appendTranscriptChatMessage(content, segmentIndex, start, end) {
   const chatEl = document.getElementById("transcript-chat");
   if (!chatEl) return;
@@ -355,6 +361,7 @@ async function transcribeRecordingVadSequential(id) {
   // For VAD + Sequential, default segment response to plain text
   // regardless of the configured default, unless the user explicitly
   // selected another concrete format.
+  const newlinePerResponse = shouldUseNewlinePerResponse();
   let segmentResponseFormat = "text";
   const selectedFormat = getSelectedTranscriptFormat();
   if (
@@ -439,7 +446,14 @@ async function transcribeRecordingVadSequential(id) {
       const content =
         data && typeof data.content === "string" ? data.content : "";
 
-      appendTranscriptChatMessage(content, i, seg.start, seg.end);
+      if (newlinePerResponse) {
+        appendTranscriptChatMessage(content, i, seg.start, seg.end);
+      } else {
+        contentEl.style.display = "block";
+        const existing = contentEl.textContent || "";
+        const addition = content || "";
+        contentEl.textContent = existing ? `${existing}${addition}` : addition;
+      }
 
       completed += 1;
       transcriptCompletedSegments = completed;
