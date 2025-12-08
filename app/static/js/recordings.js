@@ -388,6 +388,7 @@ async function transcribeRecordingVadSequential(id) {
     }
 
     showTranscriptProgress(segments.length);
+    setTranscriptLoading(loadingEl, false);
     setTranscriptStatusText(
       `Processing segments (0 of ${segments.length} completed)...`,
     );
