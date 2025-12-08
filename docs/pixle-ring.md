@@ -99,13 +99,16 @@ Script: `pixel_ring_service.py`
 Behavior:
 
 * Polls `/status` on the backend (default: `http://127.0.0.1:8000`).
-* If `recording_active` is `true`, LEDs go **red**.
-* If inactive, LEDs turn **off**.
+* Uses **three** logical LEDs:
+  * LED 1 (recording): **red** when `recording_active` is `true`, otherwise **off**.
+  * LED 2 (health): **solid green** when `recorder-api.service`, `recorder-button.service`,
+    and `recorder-pixel-ring.service` are all `active`; **flashing amber** if any are not.
+  * LED 3: reserved for future use.
 
 Environment variables:
 
 * `RECORDER_RING_POLL_INTERVAL` – poll rate in seconds (default 1.0)
-* `RECORDER_RING_BRIGHTNESS` – default recording indicator brightness (4–50, default 20)
+* `RECORDER_RING_BRIGHTNESS` – brightness used for both the recording and health LEDs (4–50, default 20)
 
 Make sure the library is installed:
 

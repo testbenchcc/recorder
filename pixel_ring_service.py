@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import signal
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -19,6 +20,16 @@ except ImportError:  # pragma: no cover - only used on the Pi
 API_BASE_URL = os.getenv("RECORDER_API_BASE_URL", "http://127.0.0.1:8000")
 POLL_INTERVAL = float(os.getenv("RECORDER_RING_POLL_INTERVAL", "1.0"))
 DEFAULT_BRIGHTNESS = int(os.getenv("RECORDER_RING_BRIGHTNESS", "20"))
+# Systemd units whose health we reflect on the second LED
+SERVICE_UNITS = [
+    "recorder-api.service",
+    "recorder-button.service",
+    "recorder-pixel-ring.service",
+]
+# LED colors
+HEALTH_OK_COLOR = (0, 255, 0)  # green
+HEALTH_WARN_COLOR = (255, 191, 0)  # amber-ish
+LED_COUNT_USED = 3  # recording, health, reserved
 CONFIG_FILE_PATH = Path(os.getenv("RECORDER_CONFIG_PATH", "config.json"))
 
 
@@ -28,7 +39,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("pixel_ring_service")
 
-_last_recording_active: Optional[bool] = None
+_health_blink_on: bool = False
+_last_brightness: Optional[int] = None
 
 
 def _load_config() -> Dict[str, Any]:
@@ -55,8 +67,82 @@ def _parse_color(color: str) -> tuple[int, int, int]:
     return 255, 0, 0
 
 
-def _set_ring_state(recording_active: bool, config: Dict[str, Any]) -> None:
-    global _last_recording_active
+def _check_services_healthy() -> bool:
+    """
+    Return True if all expected systemd services are active, False otherwise.
+    Any error talking to systemd is treated as unhealthy so the health LED
+    will flash amber.
+    """
+    healthy = True
+    for unit in SERVICE_UNITS:
+        try:
+            result = subprocess.run(
+                ["systemctl", "is-active", unit],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                check=False,
+            )
+            state = result.stdout.strip()
+            if state != "active":
+                logger.debug("Service %s not active (state=%s)", unit, state)
+                healthy = False
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("Failed to check service %s: %s", unit, exc)
+            healthy = False
+    return healthy
+
+
+def _apply_pixels(pixels: list[tuple[int, int, int]]) -> None:
+    """
+    Low-level helper to apply per-LED colors.
+
+    For APA102-based pixel rings (e.g. ReSpeaker HAT), we drive individual
+    pixels via the underlying APA102 driver. For other pixel_ring backends
+    (e.g. USB arrays), we fall back to a best-effort mono color using
+    set_color/off so behaviour degrades gracefully.
+    """
+    if pixel_ring is None:  # pragma: no cover - hardware specific
+        return
+
+    dev = getattr(pixel_ring, "dev", None)
+    if dev is not None and hasattr(dev, "set_pixel") and hasattr(dev, "show"):
+        total_pixels = getattr(pixel_ring, "PIXELS_N", len(pixels))
+        try:
+            for idx in range(total_pixels):
+                if idx < len(pixels):
+                    r, g, b = pixels[idx]
+                else:
+                    r = g = b = 0
+                dev.set_pixel(idx, int(r), int(g), int(b))
+            dev.show()
+        except Exception as exc:  # pragma: no cover - hardware specific
+            logger.warning("Failed to update APA102 pixels: %s", exc)
+        return
+
+    # Fallback: approximate by using the first non-off color for the whole ring
+    r = g = b = 0
+    for pr, pg, pb in pixels:
+        if pr or pg or pb:
+            r, g, b = pr, pg, pb
+            break
+
+    try:
+        if r or g or b:
+            pixel_ring.set_color(r=int(r), g=int(g), b=int(b))
+        else:
+            pixel_ring.off()
+    except Exception as exc:  # pragma: no cover - hardware specific
+        logger.warning("Failed to update fallback pixel ring color: %s", exc)
+
+
+def _set_ring_state(
+    recording_active: bool,
+    services_healthy: bool,
+    config: Dict[str, Any],
+) -> None:
+    global _health_blink_on, _last_brightness
+
     if pixel_ring is None:  # pragma: no cover - hardware specific
         return
 
@@ -70,30 +156,45 @@ def _set_ring_state(recording_active: bool, config: Dict[str, Any]) -> None:
             pixel_ring.off()
         except Exception as exc:  # pragma: no cover - hardware specific
             logger.warning("Failed to turn off pixel ring: %s", exc)
-        _last_recording_active = None
+        _last_brightness = None
+        _health_blink_on = False
         return
 
-    if _last_recording_active == recording_active:
-        return
+    # Use the same brightness for both the recording indicator and the
+    # health indicator, as requested.
+    brightness = int(recording_light_cfg.get("brightness", DEFAULT_BRIGHTNESS))
+    brightness = max(4, min(50, brightness))
+    if _last_brightness != brightness:
+        try:
+            pixel_ring.set_brightness(brightness)
+            _last_brightness = brightness
+        except Exception as exc:  # pragma: no cover - hardware specific
+            logger.warning("Failed to set pixel ring brightness: %s", exc)
 
-    _last_recording_active = recording_active
+    color_str = recording_light_cfg.get("color", "#ff0000")
+    rec_r, rec_g, rec_b = _parse_color(color_str)
 
+    # LED layout:
+    #   0: recording indicator
+    #   1: service health indicator
+    #   2: reserved for future use
+    pixels: list[tuple[int, int, int]] = [(0, 0, 0)] * LED_COUNT_USED
+
+    # Recording LED
     if recording_active:
-        brightness = int(recording_light_cfg.get("brightness", DEFAULT_BRIGHTNESS))
-        brightness = max(4, min(50, brightness))
-        color_str = recording_light_cfg.get("color", "#ff0000")
-        r, g, b = _parse_color(color_str)
+        pixels[0] = (rec_r, rec_g, rec_b)
 
-        logger.info(
-            "Recording active – turning ring on (brightness=%s, color=%s)",
-            brightness,
-            color_str,
-        )
-        pixel_ring.set_brightness(brightness)
-        pixel_ring.set_color(r=r, g=g, b=b)
+    # Health LED:
+    # - Solid green when all services are healthy
+    # - Flashing amber when any service is unhealthy
+    if services_healthy:
+        pixels[1] = HEALTH_OK_COLOR
+        _health_blink_on = False
     else:
-        logger.info("Recording inactive – turning ring off")
-        pixel_ring.off()
+        _health_blink_on = not _health_blink_on
+        pixels[1] = HEALTH_WARN_COLOR if _health_blink_on else (0, 0, 0)
+
+    _apply_pixels(pixels)
 
 
 def _fetch_recording_active() -> bool:
@@ -110,7 +211,7 @@ def _cleanup(signum=None, frame=None) -> None:  # pragma: no cover - signal hand
     if pixel_ring is not None:
         try:
             pixel_ring.off()
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover - hardware specific
             logger.warning("Failed to turn off pixel ring: %s", exc)
     sys.exit(0)
 
@@ -135,13 +236,28 @@ def main() -> None:
 
     while True:
         try:
-            active = _fetch_recording_active()
+            try:
+                recording_active = _fetch_recording_active()
+            except Exception as exc:  # pragma: no cover - network specific
+                logger.error("Failed to fetch recording status: %s", exc)
+                # When status is unknown, assume not recording but still
+                # update the health indicator so we can signal issues.
+                recording_active = False
+
+            try:
+                services_healthy = _check_services_healthy()
+            except Exception as exc:  # pragma: no cover - systemd specific
+                logger.error("Failed to check service health: %s", exc)
+                services_healthy = False
+
             cfg = _load_config()
-            _set_ring_state(active, cfg)
-        except Exception as exc:  # pragma: no cover - network/hardware specific
-            logger.error("Error updating pixel ring from status API: %s", exc)
+            _set_ring_state(recording_active, services_healthy, cfg)
+        except Exception as exc:  # pragma: no cover - hardware specific
+            logger.error("Error updating pixel ring: %s", exc)
+
         time.sleep(POLL_INTERVAL)
 
 
 if __name__ == "__main__":
     main()
+
