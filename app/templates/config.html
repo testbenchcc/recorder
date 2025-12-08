@@ -139,6 +139,83 @@
             </div>
           </div>
           <hr />
+          <h5 class="mb-3">VAD segmentation</h5>
+          <div class="mb-3">
+            <label for="vad-threshold" class="form-label">
+              VAD threshold
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              class="form-control"
+              id="vad-threshold"
+            />
+            <div class="form-text">
+              Maps to <code>--vad-threshold</code>. Higher values produce fewer, more confident speech segments.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="vad-min-silence-ms" class="form-label">
+              Min silence duration (ms)
+            </label>
+            <input
+              type="number"
+              min="0"
+              class="form-control"
+              id="vad-min-silence-ms"
+            />
+            <div class="form-text">
+              Maps to <code>--vad-min-silence-duration-ms</code>. Increase to avoid splitting on very short pauses.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="vad-max-speech-seconds" class="form-label">
+              Max speech duration (seconds)
+            </label>
+            <input
+              type="number"
+              step="0.5"
+              min="0"
+              class="form-control"
+              id="vad-max-speech-seconds"
+            />
+            <div class="form-text">
+              Maps to <code>--vad-max-speech-duration-s</code>. Longer values allow bigger segments before auto-split.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="vad-speech-pad-ms" class="form-label">
+              Speech padding (ms)
+            </label>
+            <input
+              type="number"
+              min="0"
+              class="form-control"
+              id="vad-speech-pad-ms"
+            />
+            <div class="form-text">
+              Maps to <code>--vad-speech-pad-ms</code>. Adds padding before/after detected speech.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="vad-samples-overlap" class="form-label">
+              Samples overlap (seconds)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              class="form-control"
+              id="vad-samples-overlap"
+            />
+            <div class="form-text">
+              Maps to <code>--vad-samples-overlap</code>. Controls overlap between analysis windows.
+            </div>
+          </div>
+          <hr />
           <div class="mb-3">
             <label for="default-max-duration-seconds" class="form-label">
               Default max duration (seconds)

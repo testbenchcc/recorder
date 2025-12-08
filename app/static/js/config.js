@@ -14,14 +14,21 @@ const defaultConfig = {
     brightness: 20,
     color: "#ff0000",
   },
-   whisper: {
-     enabled: false,
-     api_url: "http://127.0.0.1:8093",
-     response_format: "json",
-     temperature: 0.0,
-     temperature_inc: 0.2,
-     model_path: "",
-   },
+  whisper: {
+    enabled: false,
+    api_url: "http://127.0.0.1:8093",
+    response_format: "json",
+    temperature: 0.0,
+    temperature_inc: 0.2,
+    model_path: "",
+  },
+  vad: {
+    threshold: 0.5,
+    min_silence_duration_ms: 300,
+    max_speech_duration_s: 60.0,
+    speech_pad_ms: 100,
+    samples_overlap_s: 0.1,
+  },
   default_max_duration_seconds: 7200,
 };
 
@@ -107,6 +114,27 @@ function applyWhisper(config) {
   modelPathEl.value = cfg.model_path || "";
 }
 
+function applyVad(config) {
+  const cfg = {
+    ...defaultConfig.vad,
+    ...(config.vad || {}),
+  };
+
+  const thresholdEl = document.getElementById("vad-threshold");
+  const minSilenceEl = document.getElementById("vad-min-silence-ms");
+  const maxSpeechEl = document.getElementById("vad-max-speech-seconds");
+  const padEl = document.getElementById("vad-speech-pad-ms");
+  const overlapEl = document.getElementById("vad-samples-overlap");
+
+  if (!thresholdEl) return;
+
+  thresholdEl.value = cfg.threshold;
+  minSilenceEl.value = cfg.min_silence_duration_ms;
+  maxSpeechEl.value = cfg.max_speech_duration_s;
+  padEl.value = cfg.speech_pad_ms;
+  overlapEl.value = cfg.samples_overlap_s;
+}
+
 function applyDefaultMaxDuration(config) {
   const input = document.getElementById("default-max-duration-seconds");
   if (!input) return;
@@ -129,18 +157,21 @@ async function loadConfig() {
       setConfigMessage("Failed to load configuration", "danger");
       applyRecordingLight({});
       applyWhisper({});
+      applyVad({});
       applyDefaultMaxDuration({});
       return;
     }
     const data = await res.json();
     applyRecordingLight(data || {});
     applyWhisper(data || {});
+    applyVad(data || {});
     applyDefaultMaxDuration(data || {});
   } catch (err) {
     console.error(err);
     setConfigMessage("Error loading configuration", "danger");
     applyRecordingLight({});
     applyWhisper({});
+    applyVad({});
     applyDefaultMaxDuration({});
   }
 }
@@ -164,6 +195,11 @@ async function saveConfig(e) {
     "whisper-temperature-inc",
   );
   const whisperModelPathEl = document.getElementById("whisper-model-path");
+  const vadThresholdEl = document.getElementById("vad-threshold");
+  const vadMinSilenceEl = document.getElementById("vad-min-silence-ms");
+  const vadMaxSpeechEl = document.getElementById("vad-max-speech-seconds");
+  const vadSpeechPadEl = document.getElementById("vad-speech-pad-ms");
+  const vadOverlapEl = document.getElementById("vad-samples-overlap");
 
   const defaultMaxDuration = Number.parseInt(
     defaultMaxDurationEl.value.trim(),
@@ -189,6 +225,24 @@ async function saveConfig(e) {
     (whisperTemperatureIncEl.value || "").trim(),
   );
 
+  const rawVadThreshold = Number.parseFloat(
+    (vadThresholdEl.value || "").trim(),
+  );
+  const rawVadMinSilence = Number.parseInt(
+    (vadMinSilenceEl.value || "").trim(),
+    10,
+  );
+  const rawVadMaxSpeech = Number.parseFloat(
+    (vadMaxSpeechEl.value || "").trim(),
+  );
+  const rawVadSpeechPad = Number.parseInt(
+    (vadSpeechPadEl.value || "").trim(),
+    10,
+  );
+  const rawVadOverlap = Number.parseFloat(
+    (vadOverlapEl.value || "").trim(),
+  );
+
   const payload = {
     recording_light: {
       enabled: enabledEl.checked,
@@ -206,6 +260,23 @@ async function saveConfig(e) {
         ? rawTemperatureInc
         : defaultConfig.whisper.temperature_inc,
       model_path: whisperModelPathEl.value.trim(),
+    },
+    vad: {
+      threshold: Number.isFinite(rawVadThreshold)
+        ? rawVadThreshold
+        : defaultConfig.vad.threshold,
+      min_silence_duration_ms: Number.isFinite(rawVadMinSilence)
+        ? rawVadMinSilence
+        : defaultConfig.vad.min_silence_duration_ms,
+      max_speech_duration_s: Number.isFinite(rawVadMaxSpeech)
+        ? rawVadMaxSpeech
+        : defaultConfig.vad.max_speech_duration_s,
+      speech_pad_ms: Number.isFinite(rawVadSpeechPad)
+        ? rawVadSpeechPad
+        : defaultConfig.vad.speech_pad_ms,
+      samples_overlap_s: Number.isFinite(rawVadOverlap)
+        ? rawVadOverlap
+        : defaultConfig.vad.samples_overlap_s,
     },
     default_max_duration_seconds: defaultMaxDuration,
   };

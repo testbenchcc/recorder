@@ -56,6 +56,14 @@ class WhisperConfig(BaseModel):
     model_path: str = ""
 
 
+class VadConfig(BaseModel):
+    threshold: float = Field(0.5, ge=0.0, le=1.0)
+    min_silence_duration_ms: int = Field(300, ge=0)
+    max_speech_duration_s: float = Field(60.0, ge=0.0)
+    speech_pad_ms: int = Field(100, ge=0)
+    samples_overlap_s: float = Field(0.10, ge=0.0, le=1.0)
+
+
 class AppConfig(BaseModel):
     recording_light: RecordingLightConfig = Field(
         default_factory=RecordingLightConfig
@@ -64,6 +72,7 @@ class AppConfig(BaseModel):
         settings.max_single_recording_seconds, ge=1
     )
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
+    vad: VadConfig = Field(default_factory=VadConfig)
 
 
 def _load_app_config() -> AppConfig:
@@ -136,6 +145,9 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
     if not settings.vad_model_path:
         raise HTTPException(status_code=500, detail="VAD model path is not configured")
 
+    cfg = _load_app_config()
+    vad_cfg = getattr(cfg, "vad", None)
+
     cmd = [
         settings.vad_binary,
         "--vad-model",
@@ -146,6 +158,22 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
         str(settings.vad_threads),
         "--no-prints",
     ]
+
+    if vad_cfg is not None:
+        cmd.extend(
+            [
+                "--vad-threshold",
+                f"{vad_cfg.threshold:.3f}",
+                "--vad-min-silence-duration-ms",
+                str(vad_cfg.min_silence_duration_ms),
+                "--vad-max-speech-duration-s",
+                f"{vad_cfg.max_speech_duration_s:.3f}",
+                "--vad-speech-pad-ms",
+                str(vad_cfg.speech_pad_ms),
+                "--vad-samples-overlap",
+                f"{vad_cfg.samples_overlap_s:.3f}",
+            ]
+        )
 
     try:
         proc = subprocess.run(
