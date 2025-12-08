@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     recording_dir: str = "recordings"
     max_single_recording_seconds: int = 2 * 60 * 60
     retention_hours: int = 48
+    vad_binary: str = "vad-speech-segments"
+    vad_model_path: str = ""
+    vad_threads: int = 4
 
     class Config:
         env_prefix = "RECORDER_"
@@ -24,4 +27,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

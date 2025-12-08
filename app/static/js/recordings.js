@@ -12,6 +12,9 @@ let transcriptModal = null;
 let currentTranscriptRecordingId = null;
 let transcriptProgressStartedAt = null;
 let transcriptProgressTimerId = null;
+let transcriptChatAutoScroll = true;
+let transcriptTotalSegments = 0;
+let transcriptCompletedSegments = 0;
 
 function getSelectedTranscriptFormat() {
   const select = document.getElementById("transcript-format");
@@ -78,6 +81,107 @@ function stopTranscriptProgress() {
   if (transcriptProgressTimerId != null) {
     window.clearInterval(transcriptProgressTimerId);
     transcriptProgressTimerId = null;
+  }
+}
+
+function resetTranscriptProgressUI() {
+  const progressEl = document.getElementById("transcript-progress");
+  const barEl = document.getElementById("transcript-progress-bar");
+  const labelEl = document.getElementById("transcript-progress-label");
+
+  if (progressEl) {
+    progressEl.style.display = "none";
+  }
+  if (barEl) {
+    barEl.style.width = "0%";
+    barEl.setAttribute("aria-valuenow", "0");
+  }
+  if (labelEl) {
+    labelEl.textContent = "";
+  }
+
+  transcriptTotalSegments = 0;
+  transcriptCompletedSegments = 0;
+}
+
+function showTranscriptProgress(total) {
+  transcriptTotalSegments = total;
+  transcriptCompletedSegments = 0;
+
+  const progressEl = document.getElementById("transcript-progress");
+  if (progressEl) {
+    progressEl.style.display = "";
+  }
+
+  updateTranscriptProgress(0, total);
+}
+
+function updateTranscriptProgress(completed, total) {
+  const progressEl = document.getElementById("transcript-progress");
+  const barEl = document.getElementById("transcript-progress-bar");
+  const labelEl = document.getElementById("transcript-progress-label");
+
+  if (!progressEl || !barEl || !labelEl) return;
+  if (!total || total <= 0) {
+    progressEl.style.display = "none";
+    return;
+  }
+
+  const safeCompleted = Math.max(0, Math.min(completed, total));
+  const pct = Math.round((safeCompleted / total) * 100);
+
+  barEl.style.width = `${pct}%`;
+  barEl.setAttribute("aria-valuenow", String(pct));
+  labelEl.textContent =
+    `Processing segments (${safeCompleted} of ${total} completed)...`;
+}
+
+function resetTranscriptChat() {
+  const chatEl = document.getElementById("transcript-chat");
+  if (!chatEl) return;
+  chatEl.innerHTML = "";
+  chatEl.style.display = "none";
+  transcriptChatAutoScroll = true;
+}
+
+function appendTranscriptChatMessage(content, segmentIndex, start, end) {
+  const chatEl = document.getElementById("transcript-chat");
+  if (!chatEl) return;
+
+  if (chatEl.style.display === "none") {
+    chatEl.style.display = "block";
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "mb-2";
+
+  const header = document.createElement("div");
+  header.className = "text-muted small";
+
+  let label = "Segment";
+  if (typeof segmentIndex === "number" && Number.isFinite(segmentIndex)) {
+    label += ` ${segmentIndex + 1}`;
+  }
+  if (
+    typeof start === "number" &&
+    Number.isFinite(start) &&
+    typeof end === "number" &&
+    Number.isFinite(end)
+  ) {
+    label += ` (${start.toFixed(1)}s – ${end.toFixed(1)}s)`;
+  }
+  header.textContent = label;
+
+  const body = document.createElement("div");
+  body.className = "border rounded px-2 py-1 bg-light";
+  body.textContent = content || "[Empty transcription response]";
+
+  wrapper.appendChild(header);
+  wrapper.appendChild(body);
+  chatEl.appendChild(wrapper);
+
+  if (transcriptChatAutoScroll) {
+    chatEl.scrollTop = chatEl.scrollHeight;
   }
 }
 
@@ -223,6 +327,125 @@ function playRecording(id) {
   });
 }
 
+async function transcribeRecordingVadSequential(id) {
+  const loadingEl = document.getElementById("transcript-loading");
+  const contentEl = document.getElementById("transcript-content");
+  const retryBtn = document.getElementById("transcript-retry-btn");
+
+  if (!loadingEl || !contentEl) {
+    setRecordingsMessage("Transcription UI is not available", "danger");
+    return;
+  }
+
+  resetTranscriptProgressUI();
+  resetTranscriptChat();
+  contentEl.style.display = "none";
+  contentEl.textContent = "";
+
+  transcriptChatAutoScroll = true;
+
+  let errorMessage = null;
+
+  if (retryBtn) {
+    retryBtn.disabled = true;
+  }
+
+  setTranscriptLoading(loadingEl, true);
+  setTranscriptStatusText("Detecting speech segments in audio file...");
+
+  try {
+    const vadRes = await fetch(`/recordings/${id}/vad_segments`, {
+      method: "POST",
+    });
+    if (!vadRes.ok) {
+      const body = await vadRes.json().catch(() => ({}));
+      errorMessage =
+        body.detail ||
+        `Failed to detect speech segments (${vadRes.status})`;
+      setRecordingsMessage(errorMessage, "danger");
+      return;
+    }
+
+    const vadData = await vadRes.json();
+    const segments = Array.isArray(vadData.segments)
+      ? vadData.segments
+      : [];
+
+    if (!segments.length) {
+      errorMessage =
+        "No speech segments were detected in the audio file.";
+      setTranscriptStatusText(errorMessage);
+      return;
+    }
+
+    showTranscriptProgress(segments.length);
+    setTranscriptStatusText(
+      `Processing segments (0 of ${segments.length} completed)...`,
+    );
+
+    let completed = 0;
+
+    for (let i = 0; i < segments.length; i += 1) {
+      const seg = segments[i];
+      if (
+        !seg ||
+        typeof seg.start !== "number" ||
+        typeof seg.end !== "number"
+      ) {
+        continue;
+      }
+
+      const params = new URLSearchParams();
+      params.set("start", String(seg.start));
+      params.set("end", String(seg.end));
+      params.set("segment_index", String(i));
+
+      const url = `/recordings/${id}/transcribe_segment?${params.toString()}`;
+      const res = await fetch(url, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        errorMessage =
+          body.detail ||
+          `Failed to transcribe segment ${i + 1} (${res.status})`;
+        setRecordingsMessage(errorMessage, "danger");
+        break;
+      }
+
+      const data = await res.json();
+      const content =
+        data && typeof data.content === "string" ? data.content : "";
+
+      appendTranscriptChatMessage(content, i, seg.start, seg.end);
+
+      completed += 1;
+      transcriptCompletedSegments = completed;
+      updateTranscriptProgress(completed, segments.length);
+      setTranscriptStatusText(
+        `Processing segments (${completed} of ${segments.length} completed)...`,
+      );
+    }
+
+    if (!errorMessage && transcriptCompletedSegments === segments.length) {
+      setTranscriptStatusText(
+        `Completed processing ${segments.length} segments.`,
+      );
+    }
+  } catch (err) {
+    console.error(err);
+    errorMessage = "Error running VAD + Sequential transcription";
+    setRecordingsMessage(errorMessage, "danger");
+  } finally {
+    if (retryBtn) {
+      retryBtn.disabled = false;
+    }
+    setTranscriptLoading(loadingEl, false);
+    if (errorMessage && contentEl) {
+      contentEl.style.display = "block";
+      contentEl.textContent = `[${errorMessage}]`;
+    }
+  }
+}
+
 async function transcribeRecording(id, overrideFormat) {
   const modalEl = document.getElementById("transcript-modal");
   const loadingEl = document.getElementById("transcript-loading");
@@ -245,13 +468,25 @@ async function transcribeRecording(id, overrideFormat) {
   currentTranscriptRecordingId = id;
 
   const selectedFormat = overrideFormat || getSelectedTranscriptFormat();
+  const normalizedFormat =
+    typeof selectedFormat === "string"
+      ? selectedFormat.trim().toLowerCase()
+      : null;
 
-  startTranscriptProgress();
-  setTranscriptLoading(loadingEl, true);
+  resetTranscriptProgressUI();
+  resetTranscriptChat();
   contentEl.style.display = "none";
   contentEl.textContent = "";
 
   transcriptModal.show();
+
+  if (normalizedFormat === "vad_sequential") {
+    await transcribeRecordingVadSequential(id);
+    return;
+  }
+
+  startTranscriptProgress();
+  setTranscriptLoading(loadingEl, true);
 
   let errorMessage = null;
 
@@ -349,6 +584,14 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       const format = getSelectedTranscriptFormat();
       transcribeRecording(currentTranscriptRecordingId, format);
+    });
+  }
+  const chatEl = document.getElementById("transcript-chat");
+  if (chatEl) {
+    chatEl.addEventListener("scroll", () => {
+      const nearBottom =
+        chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight <= 16;
+      transcriptChatAutoScroll = nearBottom;
     });
   }
   // Initialize transcript format select from configured default, if available.

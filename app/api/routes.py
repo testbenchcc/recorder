@@ -1,12 +1,17 @@
+import contextlib
+import io
 import json
 import logging
 import os
+import re
+import subprocess
+import wave
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -82,6 +87,191 @@ def _save_app_config(cfg: AppConfig) -> None:
         raise HTTPException(
             status_code=500, detail="Failed to save configuration"
         ) from exc
+
+
+def _parse_vad_segments_output(output: str) -> List[dict]:
+    segments: List[dict] = []
+    pattern = re.compile(
+        r"Speech segment\s+\d+:\s*start\s*=\s*([0-9.]+),\s*end\s*=\s*([0-9.]+)"
+    )
+    for line in output.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        match = pattern.search(line)
+        if not match:
+            continue
+        start = float(match.group(1))
+        end = float(match.group(2))
+        if end <= start:
+            continue
+        segments.append({"start": start, "end": end})
+    return segments
+
+
+def _run_vad_segments(audio_path: Path) -> List[dict]:
+    if not settings.vad_binary:
+        raise HTTPException(status_code=500, detail="VAD binary is not configured")
+    if not settings.vad_model_path:
+        raise HTTPException(status_code=500, detail="VAD model path is not configured")
+
+    cmd = [
+        settings.vad_binary,
+        "--vad-model",
+        settings.vad_model_path,
+        "--file",
+        str(audio_path),
+        "--threads",
+        str(settings.vad_threads),
+        "--no-prints",
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:  # pragma: no cover - environment specific
+        logger.error("VAD binary not found: %s", settings.vad_binary)
+        raise HTTPException(
+            status_code=500, detail="VAD binary is not available on this server"
+        ) from exc
+    except OSError as exc:  # pragma: no cover - environment specific
+        logger.error("Failed to start VAD process %s: %s", cmd, exc)
+        raise HTTPException(
+            status_code=500, detail="Failed to start VAD process"
+        ) from exc
+
+    if proc.returncode != 0:
+        logger.error(
+            "VAD process failed (%s): stdout=%s stderr=%s",
+            proc.returncode,
+            proc.stdout,
+            proc.stderr,
+        )
+        raise HTTPException(
+            status_code=500, detail="VAD segmentation failed for this recording"
+        )
+
+    segments = _parse_vad_segments_output(proc.stdout)
+    logger.info(
+        "VAD detected %d speech segments for %s", len(segments), audio_path.name
+    )
+    return segments
+
+
+def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
+    if end <= start:
+        raise ValueError("end must be greater than start")
+
+    with contextlib.closing(wave.open(str(path), "rb")) as wf:
+        framerate = wf.getframerate()
+        nframes = wf.getnframes()
+
+        if framerate <= 0 or nframes <= 0:
+            raise ValueError("Invalid WAV file parameters")
+
+        start_frame = max(0, int(start * framerate))
+        end_frame = min(nframes, int(end * framerate))
+
+        if start_frame >= nframes or end_frame <= start_frame:
+            raise ValueError("Requested segment is empty or out of range")
+
+        frame_count = end_frame - start_frame
+        wf.setpos(start_frame)
+        frames = wf.readframes(frame_count)
+
+        buffer = io.BytesIO()
+        with contextlib.closing(wave.open(buffer, "wb")) as out:
+            out.setnchannels(wf.getnchannels())
+            out.setsampwidth(wf.getsampwidth())
+            out.setframerate(framerate)
+            out.writeframes(frames)
+
+        return buffer.getvalue()
+
+
+def _call_whisper_inference(
+    whisper_cfg: WhisperConfig,
+    file_name: str,
+    file_obj,
+    response_format_override: Optional[str] = None,
+) -> Tuple[str, str]:
+    if not whisper_cfg.enabled:
+        raise HTTPException(
+            status_code=400, detail="Whisper integration is disabled in configuration"
+        )
+
+    api_base = whisper_cfg.api_url.rstrip("/")
+    if not api_base:
+        raise HTTPException(
+            status_code=400, detail="Whisper API URL is not configured"
+        )
+
+    inference_url = f"{api_base}/inference"
+
+    requested_fmt = (
+        (response_format_override or whisper_cfg.response_format or "json")
+        .strip()
+        .lower()
+    )
+
+    data = {
+        "response_format": requested_fmt,
+        "temperature": whisper_cfg.temperature,
+        "temperature_inc": whisper_cfg.temperature_inc,
+    }
+    if whisper_cfg.model_path:
+        data["model_path"] = whisper_cfg.model_path
+
+    try:
+        # Allow very long-running transcription requests (large files, slow models)
+        # by disabling the HTTP client timeout for the Whisper call. Connection
+        # setup still relies on the underlying OS/socket timeouts.
+        with httpx.Client(timeout=None) as client:
+            files = {"file": (file_name, file_obj, "audio/wav")}
+            response = client.post(inference_url, data=data, files=files)
+    except Exception as exc:  # pragma: no cover - network/service specific
+        logger.error("Failed to call Whisper API at %s: %s", inference_url, exc)
+        raise HTTPException(
+            status_code=502, detail="Failed to reach Whisper transcription service"
+        ) from exc
+
+    if response.status_code != 200:
+        # Try to surface any error details from the Whisper server
+        detail: str
+        try:
+            body = response.json()
+            detail = body.get("detail") or body.get("error") or response.text
+        except Exception:  # pragma: no cover - defensive
+            detail = response.text
+        logger.warning(
+            "Whisper transcription failed (%s): %s",
+            response.status_code,
+            detail,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Whisper transcription failed ({response.status_code})",
+        )
+
+    fmt = requested_fmt
+    if fmt == "json":
+        try:
+            payload = response.json()
+        except Exception:  # pragma: no cover - defensive
+            payload = response.text
+        if isinstance(payload, (dict, list)):
+            text_content = json.dumps(payload, indent=2, ensure_ascii=False)
+        else:
+            text_content = str(payload)
+    else:
+        # For text, srt, vtt, etc. treat as plain text content.
+        text_content = response.text
+
+    return fmt, text_content
 
 
 @router.get("/healthz")
@@ -294,90 +484,85 @@ def transcribe_recording_endpoint(
     cfg = _load_app_config()
     whisper_cfg = cfg.whisper
 
-    if not whisper_cfg.enabled:
-        raise HTTPException(
-            status_code=400, detail="Whisper integration is disabled in configuration"
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    with open(meta.path, "rb") as f:
+        fmt, text_content = _call_whisper_inference(
+            whisper_cfg=whisper_cfg,
+            file_name=meta.path.name,
+            file_obj=f,
+            response_format_override=response_format,
         )
+
+    return {
+        "id": recording_id,
+        "format": fmt,
+        "content": text_content,
+    }
+
+
+@router.post("/recordings/{recording_id}/vad_segments")
+def detect_vad_segments_endpoint(recording_id: str) -> dict:
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    segments = _run_vad_segments(meta.path)
+    return {
+        "id": recording_id,
+        "segments": segments,
+    }
+
+
+@router.post("/recordings/{recording_id}/transcribe_segment")
+def transcribe_recording_segment_endpoint(
+    recording_id: str,
+    start: float = Query(..., description="Segment start time in seconds"),
+    end: float = Query(..., description="Segment end time in seconds"),
+    segment_index: Optional[int] = None,
+    response_format: Optional[str] = None,
+) -> dict:
+    cfg = _load_app_config()
+    whisper_cfg = cfg.whisper
 
     meta = get_recording(recording_id)
     if meta is None:
         raise HTTPException(status_code=404, detail="Recording not found")
 
-    api_base = whisper_cfg.api_url.rstrip("/")
-    if not api_base:
-        raise HTTPException(
-            status_code=400, detail="Whisper API URL is not configured"
-        )
-
-    inference_url = f"{api_base}/inference"
-
     try:
-        # Allow very long-running transcription requests (large files, slow models)
-        # by disabling the HTTP client timeout for the Whisper call. Connection
-        # setup still relies on the underlying OS/socket timeouts.
-        with httpx.Client(timeout=None) as client:
-            with open(meta.path, "rb") as f:
-                files = {"file": (meta.path.name, f, "audio/wav")}
-                requested_fmt = (
-                    (response_format or whisper_cfg.response_format or "json")
-                    .strip()
-                    .lower()
-                )
-                data = {
-                    "response_format": requested_fmt,
-                    "temperature": whisper_cfg.temperature,
-                    "temperature_inc": whisper_cfg.temperature_inc,
-                }
-                if whisper_cfg.model_path:
-                    data["model_path"] = whisper_cfg.model_path
-
-                response = client.post(inference_url, data=data, files=files)
-    except Exception as exc:  # pragma: no cover - network/service specific
-        logger.error("Failed to call Whisper API at %s: %s", inference_url, exc)
+        segment_bytes = _extract_wav_segment_bytes(meta.path, start, end)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.error(
+            "Failed to extract audio segment for %s: %s", meta.path.name, exc
+        )
         raise HTTPException(
-            status_code=502, detail="Failed to reach Whisper transcription service"
+            status_code=500, detail="Failed to create audio segment"
         ) from exc
 
-    if response.status_code != 200:
-        # Try to surface any error details from the Whisper server
-        detail: str
-        try:
-            body = response.json()
-            detail = body.get("detail") or body.get("error") or response.text
-        except Exception:  # pragma: no cover - defensive
-            detail = response.text
-        logger.warning(
-            "Whisper transcription failed (%s): %s",
-            response.status_code,
-            detail,
-        )
-        raise HTTPException(
-            status_code=502,
-            detail=f"Whisper transcription failed ({response.status_code})",
-        )
+    file_like = io.BytesIO(segment_bytes)
+    file_like.seek(0)
 
-    # Normalize the response into simple text for the UI.
-    fmt = (
-        (response_format or whisper_cfg.response_format or "json")
-        .strip()
-        .lower()
-    )
-    text_content: str
-    if fmt == "json":
-        try:
-            payload = response.json()
-        except Exception:  # pragma: no cover - defensive
-            payload = response.text
-        if isinstance(payload, (dict, list)):
-            text_content = json.dumps(payload, indent=2, ensure_ascii=False)
-        else:
-            text_content = str(payload)
+    if segment_index is not None and segment_index >= 0:
+        file_name = f"segment_{segment_index:03d}.wav"
     else:
-        # For text, srt, vtt, etc. treat as plain text content.
-        text_content = response.text
+        file_name = meta.path.name
+
+    fmt, text_content = _call_whisper_inference(
+        whisper_cfg=whisper_cfg,
+        file_name=file_name,
+        file_obj=file_like,
+        response_format_override=response_format,
+    )
 
     return {
         "id": recording_id,
+        "segment_index": segment_index,
+        "start": start,
+        "end": end,
         "format": fmt,
         "content": text_content,
     }
