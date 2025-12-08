@@ -163,9 +163,6 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
 
 
 def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
-    if end <= start:
-        raise ValueError("end must be greater than start")
-
     with contextlib.closing(wave.open(str(path), "rb")) as wf:
         framerate = wf.getframerate()
         nframes = wf.getnframes()
@@ -173,11 +170,18 @@ def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
         if framerate <= 0 or nframes <= 0:
             raise ValueError("Invalid WAV file parameters")
 
-        start_frame = max(0, int(start * framerate))
-        end_frame = min(nframes, int(end * framerate))
+        start_frame = int(start * framerate)
+        end_frame = int(end * framerate)
 
-        if start_frame >= nframes or end_frame <= start_frame:
-            raise ValueError("Requested segment is empty or out of range")
+        if start_frame < 0:
+            start_frame = 0
+        if start_frame >= nframes:
+            start_frame = max(0, nframes - 1)
+
+        if end_frame <= start_frame:
+            end_frame = min(nframes, start_frame + 1)
+        if end_frame > nframes:
+            end_frame = nframes
 
         frame_count = end_frame - start_frame
         wf.setpos(start_frame)
