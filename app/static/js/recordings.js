@@ -15,6 +15,7 @@ let transcriptProgressTimerId = null;
 let transcriptChatAutoScroll = true;
 let transcriptTotalSegments = 0;
 let transcriptCompletedSegments = 0;
+let transcriptAbortRequested = false;
 
 function getSelectedTranscriptFormat() {
   const select = document.getElementById("transcript-format");
@@ -345,6 +346,7 @@ async function transcribeRecordingVadSequential(id) {
   const loadingEl = document.getElementById("transcript-loading");
   const contentEl = document.getElementById("transcript-content");
   const retryBtn = document.getElementById("transcript-retry-btn");
+  const stopBtn = document.getElementById("transcript-stop-btn");
 
   if (!loadingEl || !contentEl) {
     setRecordingsMessage("Transcription UI is not available", "danger");
@@ -357,6 +359,11 @@ async function transcribeRecordingVadSequential(id) {
   contentEl.textContent = "";
 
   transcriptChatAutoScroll = true;
+  transcriptAbortRequested = false;
+
+  if (stopBtn) {
+    stopBtn.disabled = false;
+  }
 
   // For VAD + Sequential, default segment response to plain text
   // regardless of the configured default, unless the user explicitly
@@ -414,6 +421,12 @@ async function transcribeRecordingVadSequential(id) {
     let completed = 0;
 
     for (let i = 0; i < segments.length; i += 1) {
+      if (transcriptAbortRequested) {
+        resetTranscriptProgressUI();
+        setTranscriptStatusText("Transcription cancelled.");
+        break;
+      }
+
       const seg = segments[i];
       if (
         !seg ||
@@ -484,6 +497,9 @@ async function transcribeRecordingVadSequential(id) {
   } finally {
     if (retryBtn) {
       retryBtn.disabled = false;
+    }
+    if (stopBtn) {
+      stopBtn.disabled = true;
     }
     setTranscriptLoading(loadingEl, false);
     if (errorMessage && contentEl) {
@@ -641,14 +657,18 @@ window.addEventListener("DOMContentLoaded", () => {
       transcriptChatAutoScroll = nearBottom;
     });
   }
+  const stopBtn = document.getElementById("transcript-stop-btn");
+  if (stopBtn) {
+    stopBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      transcriptAbortRequested = true;
+    });
+  }
   const newlineEl = document.getElementById("transcript-per-response-newline");
   if (newlineEl) {
     newlineEl.addEventListener("change", () => {
       // Re-run visibility logic to also toggle timestamp checkbox state.
-      const formatSelectLocal = document.getElementById("transcript-format");
-      if (!formatSelectLocal) return;
-      const event = new Event("change");
-      formatSelectLocal.dispatchEvent(event);
+      updateVadOptionsVisibility();
     });
   }
   const formatSelect = document.getElementById("transcript-format");
