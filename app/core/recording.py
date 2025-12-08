@@ -69,7 +69,13 @@ def _list_recording_files() -> List[Path]:
     root = Path(settings.recording_dir)
     if not root.exists():
         return []
-    return sorted(root.rglob("*.wav"), key=lambda p: p.stat().st_mtime)
+    paths: List[Path] = []
+    for path in root.rglob("*.wav"):
+        # Ignore any VAD debug/segment files stored under "vad_segments" folders.
+        if any(parent.name == "vad_segments" for parent in path.parents):
+            continue
+        paths.append(path)
+    return sorted(paths, key=lambda p: p.stat().st_mtime)
 
 
 def _metadata_for_path(path: Path) -> Optional[RecordingMetadata]:
