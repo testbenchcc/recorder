@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     max_single_recording_seconds: int = 2 * 60 * 60
     retention_hours: int = 48
     vad_binary: str = "vad-speech-segments"
-    vad_model_path: str = "/home/tbrinkhuis/whisper.cpp/models/ggml-silero-v6.2.0.bin"
+    vad_model_path: str = "~/whisper.cpp/models/ggml-silero-v6.2.0.bin"
     vad_threads: int = 4
 
     class Config:
