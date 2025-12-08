@@ -17,6 +17,7 @@ except ImportError:  # pragma: no cover - only used on the Pi
 BUTTON_GPIO = int(os.getenv("RECORDER_BUTTON_GPIO", "17"))
 API_BASE_URL = os.getenv("RECORDER_API_BASE_URL", "http://127.0.0.1:8000")
 DEBOUNCE_MS = int(os.getenv("RECORDER_BUTTON_DEBOUNCE_MS", "200"))
+MIN_PRESS_INTERVAL_SEC = float(os.getenv("RECORDER_BUTTON_MIN_INTERVAL_SEC", "0.8"))
 
 
 logging.basicConfig(
@@ -24,6 +25,39 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger("button_service")
+
+_last_press_time: Optional[float] = None
+
+
+def _should_handle_press(now: Optional[float] = None) -> bool:
+    """
+    Additional software debouncing to avoid multiple toggles per physical press.
+
+    RPi.GPIO's bouncetime is not always sufficient, so we enforce a minimum
+    interval between accepted presses. Any callbacks that fire again within
+    MIN_PRESS_INTERVAL_SEC of the last accepted press are ignored.
+    """
+    global _last_press_time
+
+    if MIN_PRESS_INTERVAL_SEC <= 0:
+        return True
+
+    current = now if now is not None else time.monotonic()
+    if _last_press_time is None:
+        _last_press_time = current
+        return True
+
+    delta = current - _last_press_time
+    if delta < MIN_PRESS_INTERVAL_SEC:
+        logger.debug(
+            "Ignoring button press (%.3fs since last, min %.3fs)",
+            delta,
+            MIN_PRESS_INTERVAL_SEC,
+        )
+        return False
+
+    _last_press_time = current
+    return True
 
 
 def _start_recording() -> None:
@@ -120,7 +154,10 @@ def _get_recording_active() -> Optional[bool]:
 
 
 def _button_callback(channel: int) -> None:
-    logger.info("Button pressed on GPIO %s", channel)
+    if not _should_handle_press():
+        return
+
+    logger.info("Button press accepted on GPIO %s", channel)
     active = _get_recording_active()
 
     if active is None:
