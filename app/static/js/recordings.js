@@ -344,6 +344,15 @@ async function transcribeRecordingVadSequential(id) {
 
   transcriptChatAutoScroll = true;
 
+  const selectedFormat = getSelectedTranscriptFormat();
+  let segmentResponseFormat = null;
+  if (
+    selectedFormat &&
+    selectedFormat !== "vad_sequential"
+  ) {
+    segmentResponseFormat = selectedFormat;
+  }
+
   let errorMessage = null;
 
   if (retryBtn) {
@@ -399,6 +408,9 @@ async function transcribeRecordingVadSequential(id) {
       params.set("start", String(seg.start));
       params.set("end", String(seg.end));
       params.set("segment_index", String(i));
+      if (segmentResponseFormat) {
+        params.set("response_format", segmentResponseFormat);
+      }
 
       const url = `/recordings/${id}/transcribe_segment?${params.toString()}`;
       const res = await fetch(url, { method: "POST" });

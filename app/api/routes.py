@@ -197,6 +197,32 @@ def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
         return buffer.getvalue()
 
 
+def _debug_save_segment_wav(
+    recording_path: Path,
+    segment_index: Optional[int],
+    start: float,
+    end: float,
+    data: bytes,
+) -> None:
+    if not getattr(settings, "debug_vad_segments", False):
+        return
+
+    try:
+        out_dir = recording_path.parent / "vad_segments"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        idx = segment_index if segment_index is not None and segment_index >= 0 else 0
+        fname = (
+            f"{recording_path.stem}_seg_{idx:03d}_"
+            f"{start:.2f}s_{end:.2f}s.wav"
+        )
+        out_path = out_dir / fname
+        out_path.write_bytes(data)
+        logger.info("Saved VAD debug segment to %s", out_path)
+    except Exception as exc:  # pragma: no cover - debug only
+        logger.warning("Failed to save VAD debug segment: %s", exc)
+
+
 def _call_whisper_inference(
     whisper_cfg: WhisperConfig,
     file_name: str,
@@ -550,6 +576,14 @@ def transcribe_recording_segment_endpoint(
         raise HTTPException(
             status_code=500, detail="Failed to create audio segment"
         ) from exc
+
+    _debug_save_segment_wav(
+        recording_path=meta.path,
+        segment_index=segment_index,
+        start=start,
+        end=end,
+        data=segment_bytes,
+    )
 
     file_like = io.BytesIO(segment_bytes)
     file_like.seek(0)
