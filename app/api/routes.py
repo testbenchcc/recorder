@@ -163,38 +163,54 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
 
 
 def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
-    with contextlib.closing(wave.open(str(path), "rb")) as wf:
-        framerate = wf.getframerate()
-        nframes = wf.getnframes()
+    if end <= start:
+        raise ValueError("end must be greater than start")
 
-        if framerate <= 0 or nframes <= 0:
-            raise ValueError("Invalid WAV file parameters")
+    start_sec = max(0.0, float(start))
+    end_sec = float(end)
 
-        start_frame = int(start * framerate)
-        end_frame = int(end * framerate)
+    cmd = [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-ss",
+        f"{start_sec:.3f}",
+        "-to",
+        f"{end_sec:.3f}",
+        "-i",
+        str(path),
+        "-c",
+        "copy",
+        "-f",
+        "wav",
+        "-",
+    ]
 
-        if start_frame < 0:
-            start_frame = 0
-        if start_frame >= nframes:
-            start_frame = max(0, nframes - 1)
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError as exc:  # pragma: no cover - environment specific
+        logger.error("ffmpeg not found while slicing segments")
+        raise RuntimeError("ffmpeg is required for VAD segment extraction") from exc
+    except OSError as exc:  # pragma: no cover - environment specific
+        logger.error("Failed to start ffmpeg for segment extraction: %s", exc)
+        raise RuntimeError("Failed to start ffmpeg for segment extraction") from exc
 
-        if end_frame <= start_frame:
-            end_frame = min(nframes, start_frame + 1)
-        if end_frame > nframes:
-            end_frame = nframes
+    if proc.returncode != 0 or not proc.stdout:
+        logger.error(
+            "ffmpeg segment extraction failed (%s): %s",
+            proc.returncode,
+            proc.stderr.decode("utf-8", errors="ignore"),
+        )
+        raise RuntimeError("Failed to extract audio segment with ffmpeg")
 
-        frame_count = end_frame - start_frame
-        wf.setpos(start_frame)
-        frames = wf.readframes(frame_count)
-
-        buffer = io.BytesIO()
-        with contextlib.closing(wave.open(buffer, "wb")) as out:
-            out.setnchannels(wf.getnchannels())
-            out.setsampwidth(wf.getsampwidth())
-            out.setframerate(framerate)
-            out.writeframes(frames)
-
-        return buffer.getvalue()
+    return proc.stdout
 
 
 def _debug_save_segment_wav(
