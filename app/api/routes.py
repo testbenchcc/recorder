@@ -91,23 +91,43 @@ def _save_app_config(cfg: AppConfig) -> None:
 
 
 def _parse_vad_segments_output(output: str) -> List[dict]:
-    segments: List[dict] = []
-    pattern = re.compile(
+    vad_segments: List[dict] = []
+    speech_segments: List[dict] = []
+
+    pattern_vad = re.compile(
+        r"VAD segment\s+\d+:\s*start\s*=\s*([0-9.]+),\s*end\s*=\s*([0-9.]+)"
+    )
+    pattern_speech = re.compile(
         r"Speech segment\s+\d+:\s*start\s*=\s*([0-9.]+),\s*end\s*=\s*([0-9.]+)"
     )
+
     for line in output.splitlines():
         line = line.strip()
         if not line:
             continue
-        match = pattern.search(line)
-        if not match:
+
+        m_vad = pattern_vad.search(line)
+        if m_vad:
+            start = float(m_vad.group(1))
+            end = float(m_vad.group(2))
+            if end > start:
+                vad_segments.append({"start": start, "end": end})
             continue
-        start = float(match.group(1))
-        end = float(match.group(2))
-        if end <= start:
-            continue
-        segments.append({"start": start, "end": end})
-    return segments
+
+        m_speech = pattern_speech.search(line)
+        if m_speech:
+            # In some builds, "Speech segment" times are centiseconds;
+            # convert to seconds by dividing by 100.
+            start_raw = float(m_speech.group(1))
+            end_raw = float(m_speech.group(2))
+            start = start_raw / 100.0
+            end = end_raw / 100.0
+            if end > start:
+                speech_segments.append({"start": start, "end": end})
+
+    if vad_segments:
+        return vad_segments
+    return speech_segments
 
 
 def _run_vad_segments(audio_path: Path) -> List[dict]:
