@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import subprocess
+import tempfile
 import wave
 from datetime import datetime
 from pathlib import Path
@@ -169,6 +170,9 @@ def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
     start_sec = max(0.0, float(start))
     end_sec = float(end)
 
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        tmp_path = Path(tmp.name)
+
     cmd = [
         "ffmpeg",
         "-nostdin",
@@ -181,11 +185,14 @@ def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
         f"{end_sec:.3f}",
         "-i",
         str(path),
-        "-c",
-        "copy",
-        "-f",
-        "wav",
-        "-",
+        "-acodec",
+        "pcm_s16le",
+        "-ac",
+        "1",
+        "-ar",
+        str(settings.sample_rate),
+        "-y",
+        str(tmp_path),
     ]
 
     try:
@@ -202,15 +209,22 @@ def _extract_wav_segment_bytes(path: Path, start: float, end: float) -> bytes:
         logger.error("Failed to start ffmpeg for segment extraction: %s", exc)
         raise RuntimeError("Failed to start ffmpeg for segment extraction") from exc
 
-    if proc.returncode != 0 or not proc.stdout:
-        logger.error(
-            "ffmpeg segment extraction failed (%s): %s",
-            proc.returncode,
-            proc.stderr.decode("utf-8", errors="ignore"),
-        )
-        raise RuntimeError("Failed to extract audio segment with ffmpeg")
+    try:
+        if proc.returncode != 0:
+            logger.error(
+                "ffmpeg segment extraction failed (%s): %s",
+                proc.returncode,
+                proc.stderr.decode("utf-8", errors="ignore"),
+            )
+            raise RuntimeError("Failed to extract audio segment with ffmpeg")
 
-    return proc.stdout
+        data = tmp_path.read_bytes()
+        if not data:
+            raise RuntimeError("Empty segment produced by ffmpeg")
+        return data
+    finally:
+        with contextlib.suppress(FileNotFoundError):
+            tmp_path.unlink()
 
 
 def _debug_save_segment_wav(
