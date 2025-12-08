@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     vad_model_path: str = ""
     vad_threads: int = 4
     debug_vad_segments: bool = False
+    cache_db_path: str = "cache.db"
 
     class Config:
         env_prefix = "RECORDER_"

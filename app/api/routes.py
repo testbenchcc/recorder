@@ -16,6 +16,11 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+from app.core.cache import (
+    build_config_fingerprint,
+    get_cache_entry,
+    upsert_cache_entry,
+)
 from app.core.config import settings
 from app.core.status import get_status
 from app.core.recording import (
@@ -147,6 +152,25 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
     cfg = _load_app_config()
     vad_cfg = getattr(cfg, "vad", None)
 
+    config_hash, config_json = build_config_fingerprint(
+        whisper_cfg=cfg.whisper, vad_cfg=vad_cfg
+    )
+
+    cached = get_cache_entry(audio_path.stem.split("_", 2)[1], "vad_sequential")
+    if cached is not None and cached.get("config_hash") == config_hash:
+        raw = cached.get("vad_segments_json")
+        if raw:
+            try:
+                segments = json.loads(raw)
+                logger.info(
+                    "Using cached VAD segments (%d) for %s",
+                    len(segments),
+                    audio_path.name,
+                )
+                return segments
+            except Exception:  # pragma: no cover - defensive
+                pass
+
     cmd = [
         settings.vad_binary,
         "--vad-model",
@@ -207,6 +231,17 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
     logger.info(
         "VAD detected %d speech segments for %s", len(segments), audio_path.name
     )
+
+    # Cache the segmentation keyed by recording id + VAD+Sequential format.
+    recording_id = audio_path.stem.split("_", 2)[1]
+    upsert_cache_entry(
+        recording_id=recording_id,
+        response_format="vad_sequential",
+        config_hash=config_hash,
+        config_json=config_json,
+        vad_segments_json=json.dumps(segments),
+    )
+
     return segments
 
 
@@ -581,7 +616,12 @@ def delete_recording_endpoint(recording_id: str) -> dict:
 
 @router.post("/recordings/{recording_id}/transcribe")
 def transcribe_recording_endpoint(
-    recording_id: str, response_format: Optional[str] = None
+    recording_id: str,
+    response_format: Optional[str] = None,
+    force: bool = Query(
+        False,
+        description="Force recomputing transcription even if a cached result exists",
+    ),
 ) -> dict:
     cfg = _load_app_config()
     whisper_cfg = cfg.whisper
@@ -590,6 +630,26 @@ def transcribe_recording_endpoint(
     if meta is None:
         raise HTTPException(status_code=404, detail="Recording not found")
 
+    config_hash, config_json = build_config_fingerprint(
+        whisper_cfg=whisper_cfg, vad_cfg=None
+    )
+
+    effective_fmt = (
+        (response_format or whisper_cfg.response_format or "json").strip().lower()
+    )
+
+    # Check cache first unless forced.
+    if not force:
+        cached = get_cache_entry(recording_id, effective_fmt)
+        if cached is not None and cached.get("config_hash") == config_hash:
+            text_content = cached.get("aggregated_text") or ""
+            return {
+                "id": recording_id,
+                "format": effective_fmt,
+                "content": text_content,
+                "cached": True,
+            }
+
     with open(meta.path, "rb") as f:
         fmt, text_content = _call_whisper_inference(
             whisper_cfg=whisper_cfg,
@@ -597,6 +657,14 @@ def transcribe_recording_endpoint(
             file_obj=f,
             response_format_override=response_format,
         )
+
+    upsert_cache_entry(
+        recording_id=recording_id,
+        response_format=fmt,
+        config_hash=config_hash,
+        config_json=config_json,
+        aggregated_text=text_content,
+    )
 
     return {
         "id": recording_id,
@@ -618,6 +686,49 @@ def detect_vad_segments_endpoint(recording_id: str) -> dict:
     }
 
 
+@router.get("/recordings/{recording_id}/transcription_cached")
+def get_cached_transcription_endpoint(
+    recording_id: str, response_format: str
+) -> dict:
+    cfg = _load_app_config()
+    whisper_cfg = cfg.whisper
+    vad_cfg = getattr(cfg, "vad", None)
+
+    config_hash, _ = build_config_fingerprint(
+        whisper_cfg=whisper_cfg, vad_cfg=vad_cfg
+    )
+
+    fmt = (response_format or "").strip().lower()
+    if not fmt:
+        fmt = (whisper_cfg.response_format or "json").strip().lower()
+
+    cached = get_cache_entry(recording_id, fmt)
+    if cached is None or cached.get("config_hash") != config_hash:
+        return {"cached": False}
+
+    vad_segments = None
+    segments = None
+    if cached.get("vad_segments_json"):
+        try:
+            vad_segments = json.loads(cached["vad_segments_json"])
+        except Exception:  # pragma: no cover - defensive
+            vad_segments = None
+    if cached.get("segments_json"):
+        try:
+            segments = json.loads(cached["segments_json"])
+        except Exception:  # pragma: no cover - defensive
+            segments = None
+
+    return {
+        "cached": True,
+        "id": recording_id,
+        "response_format": fmt,
+        "content": cached.get("aggregated_text") or "",
+        "vad_segments": vad_segments,
+        "segments": segments,
+    }
+
+
 @router.post("/recordings/{recording_id}/transcribe_segment")
 def transcribe_recording_segment_endpoint(
     recording_id: str,
@@ -625,6 +736,10 @@ def transcribe_recording_segment_endpoint(
     end: float = Query(..., description="Segment end time in seconds"),
     segment_index: Optional[int] = None,
     response_format: Optional[str] = None,
+    ui_format: Optional[str] = Query(
+        None,
+        description="UI-level response format (e.g. 'vad_sequential') for caching",
+    ),
 ) -> dict:
     cfg = _load_app_config()
     whisper_cfg = cfg.whisper
@@ -667,6 +782,56 @@ def transcribe_recording_segment_endpoint(
         file_obj=file_like,
         response_format_override=response_format,
     )
+
+    # Update cache for VAD + Sequential runs.
+    vad_cfg = getattr(cfg, "vad", None)
+    config_hash, config_json = build_config_fingerprint(
+        whisper_cfg=whisper_cfg, vad_cfg=vad_cfg
+    )
+
+    cache_format = (ui_format or response_format or fmt or "").strip().lower()
+    if cache_format == "vad_sequential":
+        existing = get_cache_entry(recording_id, cache_format)
+        segments: List[dict]
+        if existing and existing.get("segments_json"):
+            try:
+                segments = json.loads(existing["segments_json"])
+            except Exception:  # pragma: no cover - defensive
+                segments = []
+        else:
+            segments = []
+
+        entry = {
+            "index": segment_index,
+            "start": start,
+            "end": end,
+            "format": fmt,
+            "content": text_content,
+        }
+        segments = [s for s in segments if s.get("index") != segment_index]
+        segments.append(entry)
+        segments.sort(key=lambda s: (s.get("index") is None, s.get("index")))
+
+        # Build a simple aggregated paragraph-style text for quick reuse.
+        parts: List[str] = []
+        for s in segments:
+            c = str(s.get("content") or "").strip()
+            if not c:
+                continue
+            c = " ".join(c.split())
+            if not c:
+                continue
+            parts.append(c)
+        aggregated = " ".join(parts)
+
+        upsert_cache_entry(
+            recording_id=recording_id,
+            response_format=cache_format,
+            config_hash=config_hash,
+            config_json=config_json,
+            segments_json=json.dumps(segments),
+            aggregated_text=aggregated,
+        )
 
     return {
         "id": recording_id,

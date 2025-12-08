@@ -342,6 +342,71 @@ function playRecording(id) {
   });
 }
 
+async function loadCachedTranscription(id, normalizedFormat) {
+  const contentEl = document.getElementById("transcript-content");
+  const chatEl = document.getElementById("transcript-chat");
+  const loadingEl = document.getElementById("transcript-loading");
+
+  if (!normalizedFormat) return false;
+
+  try {
+    const params = new URLSearchParams();
+    params.set("response_format", normalizedFormat);
+    const res = await fetch(
+      `/recordings/${id}/transcription_cached?${params.toString()}`,
+    );
+    if (!res.ok) return false;
+    const data = await res.json();
+    if (!data || !data.cached) return false;
+
+    resetTranscriptProgressUI();
+    resetTranscriptChat();
+    if (loadingEl) {
+      setTranscriptLoading(loadingEl, false);
+    }
+
+    if (normalizedFormat === "vad_sequential") {
+      const segments = Array.isArray(data.segments) ? data.segments : [];
+      const newlinePerResponse = shouldUseNewlinePerResponse();
+
+      if (newlinePerResponse) {
+        for (const seg of segments) {
+          appendTranscriptChatMessage(
+            seg.content || "",
+            seg.index,
+            seg.start,
+            seg.end,
+          );
+        }
+      } else if (contentEl) {
+        contentEl.style.display = "block";
+        contentEl.classList.add(
+          "border",
+          "rounded",
+          "px-2",
+          "py-1",
+          "bg-light",
+        );
+        const text = (data.content || "").replace(/\s+/g, " ").trim();
+        contentEl.textContent = text || "[Empty transcription response]";
+      }
+    } else if (contentEl) {
+      if (chatEl) {
+        chatEl.style.display = "none";
+      }
+      contentEl.style.display = "block";
+      contentEl.textContent =
+        (data.content && String(data.content)) ||
+        "[Empty transcription response]";
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Failed to load cached transcription", err);
+    return false;
+  }
+}
+
 async function transcribeRecordingVadSequential(id) {
   const loadingEl = document.getElementById("transcript-loading");
   const contentEl = document.getElementById("transcript-content");
@@ -510,7 +575,7 @@ async function transcribeRecordingVadSequential(id) {
   }
 }
 
-async function transcribeRecording(id, overrideFormat) {
+async function transcribeRecording(id, overrideFormat, forceFresh) {
   const modalEl = document.getElementById("transcript-modal");
   const loadingEl = document.getElementById("transcript-loading");
   const contentEl = document.getElementById("transcript-content");
@@ -543,6 +608,13 @@ async function transcribeRecording(id, overrideFormat) {
   contentEl.textContent = "";
 
   transcriptModal.show();
+
+  if (!forceFresh) {
+    const usedCache = await loadCachedTranscription(id, normalizedFormat);
+    if (usedCache) {
+      return;
+    }
+  }
 
   if (normalizedFormat === "vad_sequential") {
     await transcribeRecordingVadSequential(id);
@@ -647,7 +719,7 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       const format = getSelectedTranscriptFormat();
-      transcribeRecording(currentTranscriptRecordingId, format);
+      transcribeRecording(currentTranscriptRecordingId, format, true);
     });
   }
   const chatEl = document.getElementById("transcript-chat");
