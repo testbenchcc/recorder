@@ -216,11 +216,15 @@ def _call_whisper_inference(
 
     inference_url = f"{api_base}/inference"
 
-    requested_fmt = (
-        (response_format_override or whisper_cfg.response_format or "json")
-        .strip()
-        .lower()
-    )
+    mode_raw = (response_format_override or whisper_cfg.response_format or "json")
+    mode = str(mode_raw).strip().lower()
+
+    # "vad_sequential" is a UI mode, not a Whisper response_format.
+    # When configured, fall back to a real format (json) for the server call.
+    if mode == "vad_sequential":
+        requested_fmt = "json"
+    else:
+        requested_fmt = mode
 
     data = {
         "response_format": requested_fmt,
