@@ -9,8 +9,8 @@
   </div>
   <div id="config-messages" class="mb-3"></div>
   <form id="config-form">
-    <div class="row g-3">
-      <div class="col-12 col-md-6 col-lg-4">
+    <div style="column-count: 1; column-gap: 1rem;">
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
         <div class="card">
         <div class="card-header">Recording light</div>
         <div class="card-body">
@@ -54,7 +54,7 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-lg-4">
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
         <div class="card">
         <div class="card-header">Whisper transcription server</div>
         <div class="card-body">
@@ -151,7 +151,7 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-lg-4">
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
         <div class="card">
         <div class="card-header">VAD segmentation</div>
         <div class="card-body">
@@ -234,7 +234,7 @@
         </div>
       </div>
 
-      <div class="col-12 col-md-6 col-lg-4">
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
         <div class="card">
         <div class="card-header">Recording defaults</div>
         <div class="card-body">
@@ -258,6 +258,19 @@
       </div>
     </div>
   </form>
+
+  <style>
+    @media (min-width: 768px) {
+      #config-form > div {
+        column-count: 2 !important;
+      }
+    }
+    @media (min-width: 992px) {
+      #config-form > div {
+        column-count: 3 !important;
+      }
+    }
+  </style>
 </div>
 {% endblock %}
 
