@@ -220,6 +220,75 @@
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
       crossorigin="anonymous"
     ></script>
+    <script>
+      (function () {
+        async function applyThemeFromConfig() {
+          try {
+            const res = await fetch("/ui/config", { cache: "no-store" });
+            if (!res.ok) return;
+            const data = await res.json();
+            const theme = (data && data.theme) || {};
+            const root = document.documentElement;
+            const styles = getComputedStyle(root);
+
+            function pick(name, fallback) {
+              const value = theme[name];
+              if (typeof value === "string" && value.trim()) return value.trim();
+              return fallback;
+            }
+
+            const base = pick("base", styles.getPropertyValue("--base").trim());
+            const surface0 = pick(
+              "surface0",
+              styles.getPropertyValue("--surface0").trim(),
+            );
+            const surface1 = pick(
+              "surface1",
+              styles.getPropertyValue("--surface1").trim(),
+            );
+            const surface2 = pick(
+              "surface2",
+              styles.getPropertyValue("--surface2").trim(),
+            );
+            const text = pick("text", styles.getPropertyValue("--text").trim());
+            const subtext1 = pick(
+              "subtext1",
+              styles.getPropertyValue("--subtext1").trim(),
+            );
+            const overlay2 = pick(
+              "overlay2",
+              styles.getPropertyValue("--overlay2").trim(),
+            );
+
+            root.style.setProperty("--base", base);
+            root.style.setProperty("--surface0", surface0);
+            root.style.setProperty("--surface1", surface1);
+            root.style.setProperty("--surface2", surface2);
+            root.style.setProperty("--text", text);
+            root.style.setProperty("--subtext1", subtext1);
+            root.style.setProperty("--overlay2", overlay2);
+
+            root.style.setProperty("--bg-primary", base);
+            root.style.setProperty("--bg-secondary", surface0);
+            root.style.setProperty("--bg-tertiary", surface2);
+            root.style.setProperty("--text-primary", text);
+            root.style.setProperty("--text-secondary", subtext1);
+            root.style.setProperty("--text-muted", overlay2);
+            root.style.setProperty("--border-color", surface1);
+            root.style.setProperty("--card-bg", surface0);
+            root.style.setProperty("--input-bg", surface1);
+          } catch (err) {
+            console.error("Failed to apply theme config", err);
+          }
+        }
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", applyThemeFromConfig);
+        } else {
+          applyThemeFromConfig();
+        }
+      })();
+    </script>
     {% block scripts %}{% endblock %}
   </body>
 </html>

@@ -69,6 +69,16 @@ class VadConfig(BaseModel):
     samples_overlap_s: float = Field(0.10, ge=0.0, le=1.0)
 
 
+class ThemeConfig(BaseModel):
+    base: str = "#1e1e2e"
+    surface0: str = "#313244"
+    surface1: str = "#45475a"
+    surface2: str = "#585b70"
+    text: str = "#cdd6f4"
+    subtext1: str = "#bac2de"
+    overlay2: str = "#9399b2"
+
+
 class AppConfig(BaseModel):
     recording_light: RecordingLightConfig = Field(
         default_factory=RecordingLightConfig
@@ -78,6 +88,7 @@ class AppConfig(BaseModel):
     )
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
     vad: VadConfig = Field(default_factory=VadConfig)
+    theme: ThemeConfig = Field(default_factory=ThemeConfig)
 
 
 def _load_app_config() -> AppConfig:

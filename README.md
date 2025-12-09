@@ -155,6 +155,12 @@ The **Home** and **Configuration** pages follow the same design principles:
 - Compact headers and labels for maximum content density
 - Responsive layouts that adapt to any screen size
 
+The **Configuration** page now includes a **Theme** card where you can adjust seven primary UI colors:
+- `base`, `surface0`, `surface1`, `surface2` (background layers)
+- `text`, `subtext1`, `overlay2` (foreground text layers)
+
+By default these use a Catppuccin-style dark palette, but you can customize them to match your environment.
+
 The **Transcription** modal also includes a vertical VAD timeline with a white playback marker line that moves as audio plays, making it easy to see the current position at a glance.
 
 > **Tip:** The transcription modal now intelligently caches data:

@@ -29,6 +29,15 @@ const defaultConfig = {
     speech_pad_ms: 100,
     samples_overlap_s: 0.1,
   },
+  theme: {
+    base: "#1e1e2e",
+    surface0: "#313244",
+    surface1: "#45475a",
+    surface2: "#585b70",
+    text: "#cdd6f4",
+    subtext1: "#bac2de",
+    overlay2: "#9399b2",
+  },
   default_max_duration_seconds: 7200,
 };
 
@@ -135,6 +144,31 @@ function applyVad(config) {
   overlapEl.value = cfg.samples_overlap_s;
 }
 
+function applyTheme(config) {
+  const cfg = {
+    ...defaultConfig.theme,
+    ...(config.theme || {}),
+  };
+
+  const baseEl = document.getElementById("theme-base");
+  const surface0El = document.getElementById("theme-surface0");
+  const surface1El = document.getElementById("theme-surface1");
+  const surface2El = document.getElementById("theme-surface2");
+  const textEl = document.getElementById("theme-text");
+  const subtext1El = document.getElementById("theme-subtext1");
+  const overlay2El = document.getElementById("theme-overlay2");
+
+  if (!baseEl) return;
+
+  baseEl.value = cfg.base;
+  surface0El.value = cfg.surface0;
+  surface1El.value = cfg.surface1;
+  surface2El.value = cfg.surface2;
+  textEl.value = cfg.text;
+  subtext1El.value = cfg.subtext1;
+  overlay2El.value = cfg.overlay2;
+}
+
 function applyDefaultMaxDuration(config) {
   const input = document.getElementById("default-max-duration-seconds");
   if (!input) return;
@@ -166,6 +200,7 @@ async function loadConfig() {
     applyWhisper(data || {});
     applyVad(data || {});
     applyDefaultMaxDuration(data || {});
+    applyTheme(data || {});
   } catch (err) {
     console.error(err);
     setConfigMessage("Error loading configuration", "danger");
@@ -173,6 +208,7 @@ async function loadConfig() {
     applyWhisper({});
     applyVad({});
     applyDefaultMaxDuration({});
+    applyTheme({});
   }
 }
 
@@ -200,6 +236,13 @@ async function saveConfig(e) {
   const vadMaxSpeechEl = document.getElementById("vad-max-speech-seconds");
   const vadSpeechPadEl = document.getElementById("vad-speech-pad-ms");
   const vadOverlapEl = document.getElementById("vad-samples-overlap");
+  const themeBaseEl = document.getElementById("theme-base");
+  const themeSurface0El = document.getElementById("theme-surface0");
+  const themeSurface1El = document.getElementById("theme-surface1");
+  const themeSurface2El = document.getElementById("theme-surface2");
+  const themeTextEl = document.getElementById("theme-text");
+  const themeSubtext1El = document.getElementById("theme-subtext1");
+  const themeOverlay2El = document.getElementById("theme-overlay2");
 
   const defaultMaxDuration = Number.parseInt(
     defaultMaxDurationEl.value.trim(),
@@ -277,6 +320,15 @@ async function saveConfig(e) {
       samples_overlap_s: Number.isFinite(rawVadOverlap)
         ? rawVadOverlap
         : defaultConfig.vad.samples_overlap_s,
+    },
+    theme: {
+      base: themeBaseEl.value || defaultConfig.theme.base,
+      surface0: themeSurface0El.value || defaultConfig.theme.surface0,
+      surface1: themeSurface1El.value || defaultConfig.theme.surface1,
+      surface2: themeSurface2El.value || defaultConfig.theme.surface2,
+      text: themeTextEl.value || defaultConfig.theme.text,
+      subtext1: themeSubtext1El.value || defaultConfig.theme.subtext1,
+      overlay2: themeOverlay2El.value || defaultConfig.theme.overlay2,
     },
     default_max_duration_seconds: defaultMaxDuration,
   };
