@@ -172,17 +172,6 @@ function formatTranscriptTimeLabel(value) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function getTranscriptSegmentLabel(seg, idx) {
-  const base =
-    seg && typeof seg.content === "string" && seg.content.trim()
-      ? seg.content.trim()
-      : "";
-  if (base) {
-    return base.length > 48 ? `${base.slice(0, 45)}…` : base;
-  }
-  return `Segment ${idx + 1}`;
-}
-
 function ensureTranscriptWaveformStructure() {
   const outerEl = document.getElementById("transcript-waveform");
   if (!outerEl) {
@@ -268,16 +257,9 @@ function renderTranscriptTimelineSegments() {
     block.style.backgroundColor = color;
     block.style.cursor = "pointer";
 
-    const labelText = getTranscriptSegmentLabel(seg, idx);
     block.title = `${formatTranscriptTimeLabel(start)} - ${formatTranscriptTimeLabel(
       end,
-    )}${labelText ? `: ${labelText}` : ""}`;
-    if (labelText) {
-      const label = document.createElement("div");
-      label.className = "transcript-waveform-segment-label";
-      label.textContent = labelText;
-      block.appendChild(label);
-    }
+    )}`;
 
     block.addEventListener("click", (event) => {
       event.preventDefault();
