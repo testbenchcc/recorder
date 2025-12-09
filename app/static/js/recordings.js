@@ -225,6 +225,21 @@ function highlightTranscriptSegmentContent(segmentIndex) {
   );
   if (target) {
     target.classList.add("transcript-segment-highlight");
+    const scrollEl = document.getElementById("transcript-content-scroll");
+    if (scrollEl && typeof scrollEl.getBoundingClientRect === "function") {
+      const targetRect = target.getBoundingClientRect();
+      const containerRect = scrollEl.getBoundingClientRect();
+      const offset = targetRect.top - containerRect.top;
+      const desiredTop =
+        scrollEl.scrollTop +
+        offset -
+        containerRect.height / 2 +
+        targetRect.height / 2;
+      scrollEl.scrollTo({
+        top: Math.max(0, desiredTop),
+        behavior: "smooth",
+      });
+    }
   }
 }
 
