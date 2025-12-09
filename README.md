@@ -119,14 +119,31 @@ chmod +x run.sh
 
 Once the app is running, open the web UI (for example, `http://recorder:8080`). On the Home page you can use the **Browser recorder** card to capture short test clips directly in the browser using the device microphone. Finished clips are uploaded to the server, converted to WAV (using `ffmpeg`) with the same layout as ALSA-based recordings, and will appear on the **Recordings** page like any other file.
 
-## Recordings Page
+## User Interface
 
-The **Recordings** page features a modern, adaptive card-based layout:
+The application features a **unified modern design** across all pages with consistent styling:
+
+### Design System
+- **Compact Layout**: Fluid containers with `px-3 py-3` spacing for efficient use of screen space
+- **Modern Typography**: Small, compact headers (h4) and labels for a clean, professional look
+- **Flexible Components**: Bootstrap 5 with `gap-2` spacing, small form controls (`form-select-sm`, `btn-sm`)
+- **Responsive Design**: Adaptive layouts that work seamlessly from mobile to desktop
+- **Consistent Actions**: Primary and outline buttons with uniform sizing and styling
+
+### Recordings Page
+The **Recordings** page showcases the design system with:
 - **Responsive Grid**: Automatically adjusts from 1 to 5 columns based on screen width
 - **Visual Timeline**: Each card displays a mini audio waveform with VAD (Voice Activity Detection) segments in the header
 - **Color-Coded Cards**: Beautiful gradient backgrounds with hover effects
 - **Quick Actions**: Click any card to open the transcription modal, or use the action buttons for Play, Download, Rename, and Delete
 - **Organized Info**: Recording details (date, time, duration, size) displayed in a clean grid layout
+
+### Dashboard & Configuration
+The **Home** and **Configuration** pages follow the same design principles:
+- Clean card-based layouts with consistent spacing
+- Small, efficient form controls and buttons
+- Compact headers and labels for maximum content density
+- Responsive layouts that adapt to any screen size
 
 > **Tip:** The transcription modal now intelligently caches data:
 > - **Opening the modal**: Loads cached transcriptions and VAD segments when available, avoiding unnecessary API calls

@@ -3,10 +3,12 @@
 {% block title %}Recorder – Configuration{% endblock %}
 
 {% block content %}
-<div class="row">
-  <div class="col-12">
-    <div id="config-messages" class="mb-3"></div>
-    <form id="config-form" class="d-flex flex-column gap-3">
+<div class="container-fluid px-3 py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h4 class="mb-0">Configuration</h4>
+  </div>
+  <div id="config-messages" class="mb-3"></div>
+  <form id="config-form" class="d-flex flex-column gap-3">
       <div class="card">
         <div class="card-header">Recording light</div>
         <div class="card-body">
@@ -22,7 +24,7 @@
             </label>
           </div>
           <div class="mb-3">
-            <label for="light-brightness" class="form-label">
+            <label for="light-brightness" class="form-label small">
               Brightness (0–100):
               <span id="light-brightness-value">20</span>
             </label>
@@ -37,7 +39,7 @@
             />
           </div>
           <div class="mb-0">
-            <label for="light-color" class="form-label">Color</label>
+            <label for="light-color" class="form-label small">Color</label>
             <input
               type="color"
               class="form-control form-control-color"
@@ -64,12 +66,12 @@
             </label>
           </div>
           <div class="mb-3">
-            <label for="whisper-api-url" class="form-label">
+            <label for="whisper-api-url" class="form-label small">
               API server URL
             </label>
             <input
               type="url"
-              class="form-control"
+              class="form-control form-control-sm"
               id="whisper-api-url"
               placeholder="http://127.0.0.1:8093"
             />
@@ -78,11 +80,11 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="whisper-response-format" class="form-label">
+            <label for="whisper-response-format" class="form-label small">
               Default response format
             </label>
             <select
-              class="form-select"
+              class="form-select form-select-sm"
               id="whisper-response-format"
             >
               <option value="json">json</option>
@@ -96,7 +98,7 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="whisper-temperature" class="form-label">
+            <label for="whisper-temperature" class="form-label small">
               Default temperature
             </label>
             <input
@@ -104,7 +106,7 @@
               step="0.1"
               min="0"
               max="2"
-              class="form-control"
+              class="form-control form-control-sm"
               id="whisper-temperature"
             />
             <div class="form-text">
@@ -112,7 +114,7 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="whisper-temperature-inc" class="form-label">
+            <label for="whisper-temperature-inc" class="form-label small">
               Default temperature increment
             </label>
             <input
@@ -120,7 +122,7 @@
               step="0.1"
               min="0"
               max="2"
-              class="form-control"
+              class="form-control form-control-sm"
               id="whisper-temperature-inc"
             />
             <div class="form-text">
@@ -128,12 +130,12 @@
             </div>
           </div>
           <div class="mb-0">
-            <label for="whisper-model-path" class="form-label">
+            <label for="whisper-model-path" class="form-label small">
               Default model path
             </label>
             <input
               type="text"
-              class="form-control"
+              class="form-control form-control-sm"
               id="whisper-model-path"
               placeholder="/path/to/model.bin"
             />
@@ -148,7 +150,7 @@
         <div class="card-header">VAD segmentation</div>
         <div class="card-body">
           <div class="mb-3">
-            <label for="vad-threshold" class="form-label">
+            <label for="vad-threshold" class="form-label small">
               VAD threshold
             </label>
             <input
@@ -156,7 +158,7 @@
               step="0.01"
               min="0"
               max="1"
-              class="form-control"
+              class="form-control form-control-sm"
               id="vad-threshold"
             />
             <div class="form-text">
@@ -164,13 +166,13 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="vad-min-silence-ms" class="form-label">
+            <label for="vad-min-silence-ms" class="form-label small">
               Min silence duration (ms)
             </label>
             <input
               type="number"
               min="0"
-              class="form-control"
+              class="form-control form-control-sm"
               id="vad-min-silence-ms"
             />
             <div class="form-text">
@@ -178,14 +180,14 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="vad-max-speech-seconds" class="form-label">
+            <label for="vad-max-speech-seconds" class="form-label small">
               Max speech duration (seconds)
             </label>
             <input
               type="number"
               step="0.5"
               min="0"
-              class="form-control"
+              class="form-control form-control-sm"
               id="vad-max-speech-seconds"
             />
             <div class="form-text">
@@ -193,13 +195,13 @@
             </div>
           </div>
           <div class="mb-3">
-            <label for="vad-speech-pad-ms" class="form-label">
+            <label for="vad-speech-pad-ms" class="form-label small">
               Speech padding (ms)
             </label>
             <input
               type="number"
               min="0"
-              class="form-control"
+              class="form-control form-control-sm"
               id="vad-speech-pad-ms"
             />
             <div class="form-text">
@@ -207,7 +209,7 @@
             </div>
           </div>
           <div class="mb-0">
-            <label for="vad-samples-overlap" class="form-label">
+            <label for="vad-samples-overlap" class="form-label small">
               Samples overlap (seconds)
             </label>
             <input
@@ -215,7 +217,7 @@
               step="0.01"
               min="0"
               max="1"
-              class="form-control"
+              class="form-control form-control-sm"
               id="vad-samples-overlap"
             />
             <div class="form-text">
@@ -229,12 +231,12 @@
         <div class="card-header">Recording defaults</div>
         <div class="card-body">
           <div class="mb-3">
-            <label for="default-max-duration-seconds" class="form-label">
+            <label for="default-max-duration-seconds" class="form-label small">
               Default max duration (seconds)
             </label>
             <input
               type="number"
-              class="form-control"
+              class="form-control form-control-sm"
               id="default-max-duration-seconds"
               min="1"
             />
@@ -242,11 +244,10 @@
               This value is pre-filled on the home page and used when starting a new recording.
             </div>
           </div>
-          <button type="submit" class="btn btn-primary">Save configuration</button>
+          <button type="submit" class="btn btn-sm btn-primary">Save configuration</button>
         </div>
       </div>
-    </form>
-  </div>
+  </form>
 </div>
 {% endblock %}
 
