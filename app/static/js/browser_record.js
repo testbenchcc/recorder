@@ -3,8 +3,9 @@ let browserRecordPlugin = null;
 let browserScrollingWaveform = true;
 
 const browserProgressEl = document.querySelector("#progress");
-const browserPauseButton = document.querySelector("#pause");
-const browserRecordButton = document.querySelector("#record");
+const browserStartButton = document.querySelector("#start-browser-btn");
+const browserPauseButton = document.querySelector("#pause-browser-btn");
+const browserStopButton = document.querySelector("#stop-browser-btn");
 const browserMicSelect = document.querySelector("#mic-select");
 const browserStatusBadge = document.querySelector("#browser-status-badge");
 
@@ -74,12 +75,14 @@ function browserCreateWaveSurfer() {
 
   browserRecordPlugin.on("record-end", (blob) => {
     if (browserPauseButton) {
-      browserPauseButton.style.display = "none";
+      browserPauseButton.disabled = true;
       browserPauseButton.textContent = "Pause";
     }
-    if (browserRecordButton) {
-      browserRecordButton.textContent = "Record";
-      browserRecordButton.disabled = false;
+    if (browserStartButton) {
+      browserStartButton.disabled = false;
+    }
+    if (browserStopButton) {
+      browserStopButton.disabled = true;
     }
     browserUpdateProgress(0);
     browserSetStatus(false);
@@ -127,10 +130,13 @@ function browserCreateWaveSurfer() {
   });
 
   if (browserPauseButton) {
-    browserPauseButton.style.display = "none";
+    browserPauseButton.disabled = true;
   }
-  if (browserRecordButton) {
-    browserRecordButton.textContent = "Record";
+  if (browserStartButton) {
+    browserStartButton.disabled = false;
+  }
+  if (browserStopButton) {
+    browserStopButton.disabled = true;
   }
 }
 
@@ -166,11 +172,15 @@ function browserInitMicSelection() {
   browserMicSelect.appendChild(placeholder);
 
   WaveSurfer.Record.getAvailableAudioDevices().then((devices) => {
-    devices.forEach((device) => {
+    devices.forEach((device, index) => {
       const option = document.createElement("option");
       option.value = device.deviceId;
       option.text = device.label || device.deviceId || "Microphone";
       browserMicSelect.appendChild(option);
+      
+      if (index === 0) {
+        browserMicSelect.value = device.deviceId;
+      }
     });
   });
 }
@@ -196,35 +206,16 @@ function browserAttachEventHandlers() {
     };
   }
 
-  if (browserRecordButton) {
-    browserRecordButton.onclick = () => {
+  if (browserStartButton) {
+    browserStartButton.onclick = () => {
       if (!browserRecordPlugin) {
-        return;
-      }
-
-      if (
-        (typeof browserRecordPlugin.isRecording === "function" &&
-          browserRecordPlugin.isRecording()) ||
-        (typeof browserRecordPlugin.isPaused === "function" &&
-          browserRecordPlugin.isPaused())
-      ) {
-        if (typeof browserRecordPlugin.stopRecording === "function") {
-          browserRecordPlugin.stopRecording();
-        }
-        browserRecordButton.textContent = "Record";
-        browserRecordButton.disabled = false;
-        if (browserPauseButton) {
-          browserPauseButton.style.display = "none";
-          browserPauseButton.textContent = "Pause";
-        }
-        browserSetStatus(false);
         return;
       }
 
       const deviceId = browserMicSelect ? browserMicSelect.value : undefined;
 
-      if (browserRecordButton) {
-        browserRecordButton.disabled = true;
+      if (browserStartButton) {
+        browserStartButton.disabled = true;
       }
 
       const startOpts = deviceId ? { deviceId } : {};
@@ -233,28 +224,54 @@ function browserAttachEventHandlers() {
         browserRecordPlugin
           .startRecording(startOpts)
           .then(() => {
-            if (browserRecordButton) {
-              browserRecordButton.textContent = "Stop";
-              browserRecordButton.disabled = false;
+            if (browserStartButton) {
+              browserStartButton.disabled = true;
             }
             if (browserPauseButton) {
-              browserPauseButton.style.display = "inline-block";
-              browserPauseButton.textContent = "Pause";
+              browserPauseButton.disabled = false;
+            }
+            if (browserStopButton) {
+              browserStopButton.disabled = false;
             }
             browserSetStatus(true);
           })
           .catch(() => {
-            if (browserRecordButton) {
-              browserRecordButton.textContent = "Record";
-              browserRecordButton.disabled = false;
+            if (browserStartButton) {
+              browserStartButton.disabled = false;
             }
             if (browserPauseButton) {
-              browserPauseButton.style.display = "none";
-              browserPauseButton.textContent = "Pause";
+              browserPauseButton.disabled = true;
+            }
+            if (browserStopButton) {
+              browserStopButton.disabled = true;
             }
             browserSetStatus(false);
           });
       }
+    };
+  }
+
+  if (browserStopButton) {
+    browserStopButton.onclick = () => {
+      if (!browserRecordPlugin) {
+        return;
+      }
+
+      if (typeof browserRecordPlugin.stopRecording === "function") {
+        browserRecordPlugin.stopRecording();
+      }
+      
+      if (browserStartButton) {
+        browserStartButton.disabled = false;
+      }
+      if (browserPauseButton) {
+        browserPauseButton.disabled = true;
+        browserPauseButton.textContent = "Pause";
+      }
+      if (browserStopButton) {
+        browserStopButton.disabled = true;
+      }
+      browserSetStatus(false);
     };
   }
 }
