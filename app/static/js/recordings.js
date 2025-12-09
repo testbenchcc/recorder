@@ -1126,6 +1126,61 @@ async function loadCachedTranscription(id, normalizedFormat) {
   }
 }
 
+async function regenerateVadSegments(id) {
+  const loadingEl = document.getElementById("transcript-loading");
+  
+  if (!loadingEl) {
+    setRecordingsMessage("Transcription UI is not available", "danger");
+    return;
+  }
+
+  setTranscriptLoading(loadingEl, true);
+  setTranscriptStatusText("Regenerating speech segments...");
+
+  let errorMessage = null;
+
+  try {
+    const vadUrl = `/recordings/${id}/vad_segments?force=true`;
+    const vadRes = await fetch(vadUrl, { method: "POST" });
+    if (!vadRes.ok) {
+      const body = await vadRes.json().catch(() => ({}));
+      errorMessage =
+        body.detail ||
+        `Failed to detect speech segments (${vadRes.status})`;
+      setRecordingsMessage(errorMessage, "danger");
+      return;
+    }
+
+    const vadData = await vadRes.json();
+    const segments = Array.isArray(vadData.segments)
+      ? vadData.segments
+      : [];
+    
+    if (!segments.length) {
+      errorMessage = "No speech segments were detected in the audio file.";
+      setRecordingsMessage(errorMessage, "warning");
+      return;
+    }
+
+    // Cache the new segments
+    setCachedVadSegments(id, segments);
+    
+    // Reinitialize waveform with new segments
+    initTranscriptWaveform(id, segments);
+    
+    setRecordingsMessage(
+      `VAD regenerated: ${segments.length} speech segment${segments.length !== 1 ? 's' : ''} detected`,
+      "success"
+    );
+  } catch (err) {
+    console.error(err);
+    errorMessage = "Error regenerating speech segments";
+    setRecordingsMessage(errorMessage, "danger");
+  } finally {
+    setTranscriptLoading(loadingEl, false);
+  }
+}
+
 async function transcribeRecordingVadSequential(id, forceVad) {
   const loadingEl = document.getElementById("transcript-loading");
   const contentEl = document.getElementById("transcript-content");
@@ -1577,7 +1632,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!currentTranscriptRecordingId) {
         return;
       }
-      transcribeRecordingVadSequential(currentTranscriptRecordingId, true);
+      regenerateVadSegments(currentTranscriptRecordingId);
     });
   }
   if (formatSelect) {
