@@ -27,6 +27,73 @@ let transcriptActiveRegionId = null;
 // This avoids re-downloading audio when you reopen a transcript.
 const transcriptAudioUrlCache = new Map();
 const transcriptAudioUrlPromises = new Map();
+const transcriptVadSegmentsCache = new Map();
+
+function cloneVadSegmentsForCache(segments) {
+  if (!Array.isArray(segments)) {
+    return [];
+  }
+  return segments
+    .map((seg) => {
+      if (!seg || typeof seg.start !== "number" || typeof seg.end !== "number") {
+        return null;
+      }
+      const clone = {
+        start: seg.start,
+        end: seg.end,
+      };
+      if (typeof seg.index === "number") {
+        clone.index = seg.index;
+      }
+      if (Object.prototype.hasOwnProperty.call(seg, "speaker")) {
+        clone.speaker = seg.speaker;
+      }
+      return clone;
+    })
+    .filter(Boolean);
+}
+
+function getCachedVadSegments(recordingId) {
+  if (!recordingId) {
+    return null;
+  }
+  const cached = transcriptVadSegmentsCache.get(recordingId);
+  if (!Array.isArray(cached) || !cached.length) {
+    return null;
+  }
+  return cloneVadSegmentsForCache(cached);
+}
+
+function setCachedVadSegments(recordingId, segments) {
+  if (!recordingId) {
+    return;
+  }
+  const cloned = cloneVadSegmentsForCache(segments);
+  if (!cloned.length) {
+    transcriptVadSegmentsCache.delete(recordingId);
+    return;
+  }
+  transcriptVadSegmentsCache.set(recordingId, cloned);
+}
+
+function buildSegmentsFromVadSegments(vadSegments) {
+  if (!Array.isArray(vadSegments) || !vadSegments.length) {
+    return [];
+  }
+  return vadSegments
+    .map((seg, index) => {
+      if (!seg || typeof seg.start !== "number" || typeof seg.end !== "number") {
+        return null;
+      }
+      return {
+        index: typeof seg.index === "number" ? seg.index : index,
+        start: seg.start,
+        end: seg.end,
+        content: typeof seg.content === "string" ? seg.content : "",
+      };
+    })
+    .filter(Boolean);
+}
 
 // Elements used for drawing the waveform and overlaying segment blocks.
 let transcriptWaveformTimelineEl = null;
@@ -42,6 +109,7 @@ if (typeof window !== "undefined") {
     }
     transcriptAudioUrlCache.clear();
     transcriptAudioUrlPromises.clear();
+    transcriptVadSegmentsCache.clear();
   });
 }
 
@@ -1008,17 +1076,39 @@ async function loadCachedTranscription(id, normalizedFormat) {
     }
 
     if (normalizedFormat === "vad_sequential") {
-      const segments = Array.isArray(data.segments) ? data.segments : [];
-      const newlinePerResponse = shouldUseNewlinePerResponse();
+      const vadSegments = Array.isArray(data.vad_segments) ? data.vad_segments : null;
+      if (vadSegments && vadSegments.length) {
+        if (normalizedFormat === "vad_sequential") {
+          const vadSegments = Array.isArray(data.vad_segments) ? data.vad_segments : null;
+          if (vadSegments && vadSegments.length) {
+            setCachedVadSegments(id, vadSegments);
+          }
 
-      if (newlinePerResponse) {
-        for (const seg of segments) {
-          appendTranscriptChatMessage(
-            seg.content || "",
-            seg.index,
-            seg.start,
-            seg.end,
-          );
+          const segments = Array.isArray(data.segments) ? data.segments : [];
+          const newlinePerResponse = shouldUseNewlinePerResponse();
+
+          if (newlinePerResponse) {
+            for (const seg of segments) {
+              appendTranscriptChatMessage(
+                seg.content || "",
+                seg.index,
+                seg.start,
+                seg.end,
+              );
+            }
+          } else if (contentEl) {
+            contentEl.style.display = "block";
+            contentEl.classList.add(
+              "border",
+              "rounded",
+              "px-2",
+              "py-1",
+              "bg-light",
+            );
+            const text = (data.content || "").replace(/\s+/g, " ").trim();
+            contentEl.textContent = text || "[Empty transcription response]";
+          }
+          initTranscriptWaveform(id, segments);
         }
       } else if (contentEl) {
         contentEl.style.display = "block";
