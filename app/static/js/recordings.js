@@ -21,6 +21,7 @@ let transcriptRegionsPlugin = null;
 let transcriptSegments = [];
 let transcriptSkipSilenceMode = false;
 let transcriptWaveTimeupdateUnsub = null;
+let transcriptWaveformMarkerEl = null;
 let transcriptActiveRegionId = null;
 
 let allRecordings = [];
@@ -264,6 +265,19 @@ function ensureTranscriptWaveformStructure() {
     outerEl.appendChild(timelineEl);
   }
   transcriptWaveformTimelineEl = timelineEl;
+
+  // Ensure playback marker exists inside the timeline overlay
+  if (!transcriptWaveformMarkerEl) {
+    const existingMarker = document.getElementById("transcript-waveform-marker");
+    transcriptWaveformMarkerEl = existingMarker || document.createElement("div");
+    transcriptWaveformMarkerEl.id = "transcript-waveform-marker";
+    transcriptWaveformMarkerEl.className = "transcript-waveform-marker";
+    if (!existingMarker) {
+      transcriptWaveformTimelineEl.appendChild(transcriptWaveformMarkerEl);
+    }
+  } else if (!transcriptWaveformMarkerEl.parentElement) {
+    transcriptWaveformTimelineEl.appendChild(transcriptWaveformMarkerEl);
+  }
 
   resizeTranscriptWaveformVertical();
 
@@ -596,6 +610,7 @@ function destroyTranscriptWaveform() {
   transcriptWaveformTimelineEl = null;
   transcriptRegionsPlugin = null;
   transcriptActiveRegionId = null;
+  transcriptWaveformMarkerEl = null;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
@@ -660,8 +675,9 @@ function initTranscriptWaveform(recordingId, segments) {
         minPxPerSec: 0,
         waveColor: "rgba(255, 255, 255, 0.5)",
         progressColor: "rgba(255, 255, 255, 0.8)",
-        cursorColor: "#ffffff",
-        cursorWidth: 2,
+        // Hide built-in cursor; we draw our own marker in the overlay column
+        cursorColor: "transparent",
+        cursorWidth: 0,
         barWidth: 2,
         barGap: 1,
         barRadius: 2,
@@ -717,7 +733,7 @@ function initTranscriptWaveform(recordingId, segments) {
         renderTranscriptTimelineSegments();
       });
 
-      // Update skip-silence playback when the audio is ready and during playback.
+      // Update skip-silence playback and custom playback marker during playback.
       transcriptWaveTimeupdateUnsub = ws.on(
         "timeupdate",
         (currentTime) => {
@@ -725,6 +741,20 @@ function initTranscriptWaveform(recordingId, segments) {
           const activeRegionAtTime = getTranscriptRegionIdAtTime(currentTime);
           if (activeRegionAtTime !== transcriptActiveRegionId) {
             setActiveTranscriptRegion(activeRegionAtTime);
+          }
+
+          // Move custom playback marker in the vertical timeline
+          if (
+            transcriptWaveformTimelineEl &&
+            transcriptWaveformMarkerEl &&
+            typeof ws.getDuration === "function"
+          ) {
+            const duration = ws.getDuration();
+            if (Number.isFinite(duration) && duration > 0) {
+              const clampedTime = Math.max(0, Math.min(currentTime, duration));
+              const pct = (clampedTime / duration) * 100;
+              transcriptWaveformMarkerEl.style.top = `${pct}%`;
+            }
           }
 
           if (

@@ -542,6 +542,23 @@
     flex-shrink: 0; /* keep full length after rotation */
   }
 
+  #transcript-modal .transcript-waveform-timeline {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  #transcript-modal .transcript-waveform-marker {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    margin-top: -1px; /* center the line on the position */
+    background-color: #ffffff;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
+
   #transcript-modal #transcript-waveform ::part(region) {
     background-color: rgba(102, 126, 234, 0.15);
     border: 1px solid rgba(102, 126, 234, 0.5);
