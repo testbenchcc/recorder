@@ -224,11 +224,6 @@ function initTranscriptWaveform(recordingId, segments) {
     ];
 
     transcriptSegments.forEach((seg, idx) => {
-      const label =
-        seg.content && seg.content.trim()
-          ? seg.content.trim()
-          : `Segment ${seg.index + 1} (${seg.start.toFixed(1)}s – ${seg.end.toFixed(1)}s)`;
-
       const color = regionColors[idx % regionColors.length];
 
       transcriptRegionsPlugin.addRegion({
@@ -238,7 +233,6 @@ function initTranscriptWaveform(recordingId, segments) {
         drag: false,
         resize: false,
         color,
-        content: label,
       });
     });
 
