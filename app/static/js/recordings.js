@@ -1368,12 +1368,14 @@ async function transcribeRecording(id, overrideFormat, forceFresh) {
   resetTranscriptProgressUI();
   resetTranscriptChat();
   
-  // When forceFresh is true with vad_sequential format and we have cached segments,
-  // preserve the waveform and annotations. Otherwise, destroy and reinitialize.
+  // When forceFresh is true (Resend button), check if we should preserve the waveform:
+  // - For vad_sequential: preserve if we have cached VAD segments
+  // - For other formats: preserve if waveform already exists (will be reinitialized with cached data)
   const hasCachedVadSegments = normalizedFormat === "vad_sequential" && 
     getCachedVadSegments(id)?.length > 0;
+  const shouldPreserveWaveform = forceFresh && (hasCachedVadSegments || transcriptWavesurfer);
   
-  if (!forceFresh || !hasCachedVadSegments) {
+  if (!shouldPreserveWaveform) {
     destroyTranscriptWaveform();
     initTranscriptWaveform(id);
   }

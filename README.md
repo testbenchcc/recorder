@@ -121,7 +121,7 @@ Once the app is running, open the web UI (for example, `http://recorder:8080`). 
 
 > **Tip:** The transcription modal now intelligently caches data:
 > - **Opening the modal**: Loads cached transcriptions and VAD segments when available, avoiding unnecessary API calls
-> - **Resend button**: Re-runs transcription while preserving the timeline annotations and reusing cached VAD segments
+> - **Resend button**: Re-runs transcription while preserving the waveform visualization and timeline annotations (for VAD + Sequential format)
 > - **Regen VAD button**: Forces recomputation of speech detection regions, clears the cache, and regenerates timeline annotations
 > - **Format switching**: Changing response formats uses cached data when available
 
