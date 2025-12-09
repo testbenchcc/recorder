@@ -393,7 +393,7 @@
   .recording-card.selected {
     border-color: var(--purple-start);
     border-width: 2px;
-    box-shadow: 0 0 0 3px rgba(243, 146, 55, 0.2);
+    box-shadow: 0 0 0 3px var(--accent-soft-20);
   }
 
   .recording-card-checkbox {
@@ -408,7 +408,7 @@
 
   .recording-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(243, 146, 55, 0.3);
+    box-shadow: 0 8px 16px var(--accent-soft-30);
     border-color: var(--purple-start);
   }
 
@@ -553,14 +553,14 @@
     right: 0;
     height: 2px;
     margin-top: -1px; /* center the line on the position */
-    background-color: #ffffff;
+    background-color: var(--text-primary);
     box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
     pointer-events: none;
   }
 
   #transcript-modal #transcript-waveform ::part(region) {
-    background-color: rgba(243, 146, 55, 0.15);
-    border: 1px solid rgba(243, 146, 55, 0.5);
+    background-color: var(--accent-soft-15);
+    border: 1px solid var(--accent-soft-50);
     box-sizing: border-box;
   }
 
@@ -570,12 +570,12 @@
 
   #transcript-modal .transcript-waveform-segment.active {
     outline: 2px solid var(--purple-start);
-    box-shadow: inset 0 0 0 1px rgba(243, 146, 55, 0.3);
+    box-shadow: inset 0 0 0 1px var(--accent-soft-30);
   }
 
   #transcript-modal .transcript-segment-highlight {
     outline: 2px solid var(--purple-start);
-    box-shadow: inset 0 0 0 1px rgba(243, 146, 55, 0.15);
+    box-shadow: inset 0 0 0 1px var(--accent-soft-15);
   }
 
   #transcript-modal .transcript-content-cell {
@@ -619,11 +619,17 @@
   function initWaveSurfer(el) {
     if (el._wavesurfer) return;
     
+    const rootStyles = getComputedStyle(document.documentElement);
+    const defaultWaveColor =
+      (rootStyles.getPropertyValue("--overlay2") || "").trim() || "#ddd";
+    const defaultProgressColor =
+      (rootStyles.getPropertyValue("--text-primary") || "").trim() || "#999";
+
     const options = {
       container: el,
       height: parseInt(el.dataset.height) || 128,
-      waveColor: el.dataset.waveColor || '#ddd',
-      progressColor: el.dataset.progressColor || '#999',
+      waveColor: el.dataset.waveColor || defaultWaveColor,
+      progressColor: el.dataset.progressColor || defaultProgressColor,
       cursorWidth: parseInt(el.dataset.cursorWidth) || 1,
       barWidth: parseInt(el.dataset.barWidth) || 2,
       barGap: parseInt(el.dataset.barGap) || 1,

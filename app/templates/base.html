@@ -26,8 +26,15 @@
         --text-secondary: var(--subtext1);
         --text-muted: var(--overlay2);
         --border-color: var(--surface1);
-        --purple-start: #c86b23;
-        --purple-end: #f39237;
+        --accent-start: #c86b23;
+        --accent-end: #f39237;
+        --accent-soft-15: rgba(200, 107, 35, 0.15);
+        --accent-soft-20: rgba(200, 107, 35, 0.2);
+        --accent-soft-25: rgba(200, 107, 35, 0.25);
+        --accent-soft-30: rgba(200, 107, 35, 0.3);
+        --accent-soft-50: rgba(200, 107, 35, 0.5);
+        --purple-start: var(--accent-start);
+        --purple-end: var(--accent-end);
         --card-bg: var(--surface0);
         --input-bg: var(--surface1);
         /* Catppuccin-style base tokens mapped onto our palette */
@@ -79,7 +86,7 @@
         background-color: var(--input-bg) !important;
         border-color: var(--purple-start) !important;
         color: var(--text-primary) !important;
-        box-shadow: 0 0 0 0.25rem rgba(243, 146, 55, 0.25) !important;
+        box-shadow: 0 0 0 0.25rem var(--accent-soft-25) !important;
       }
 
       .form-control::placeholder {
@@ -260,6 +267,17 @@
               styles.getPropertyValue("--overlay2").trim(),
             );
 
+            const accentStart = pick(
+              "accent_start",
+              styles.getPropertyValue("--accent-start").trim() ||
+                styles.getPropertyValue("--purple-start").trim(),
+            );
+            const accentEnd = pick(
+              "accent_end",
+              styles.getPropertyValue("--accent-end").trim() ||
+                styles.getPropertyValue("--purple-end").trim(),
+            );
+
             root.style.setProperty("--base", base);
             root.style.setProperty("--surface0", surface0);
             root.style.setProperty("--surface1", surface1);
@@ -277,6 +295,59 @@
             root.style.setProperty("--border-color", surface1);
             root.style.setProperty("--card-bg", surface0);
             root.style.setProperty("--input-bg", surface1);
+
+            root.style.setProperty("--accent-start", accentStart);
+            root.style.setProperty("--accent-end", accentEnd);
+            root.style.setProperty("--purple-start", accentStart);
+            root.style.setProperty("--purple-end", accentEnd);
+
+            function hexToRgb(hex) {
+              if (typeof hex !== "string") return null;
+              const cleaned = hex.trim().replace(/^#/, "");
+              if (cleaned.length === 3) {
+                const r = cleaned[0];
+                const g = cleaned[1];
+                const b = cleaned[2];
+                return {
+                  r: parseInt(r + r, 16),
+                  g: parseInt(g + g, 16),
+                  b: parseInt(b + b, 16),
+                };
+              }
+              if (cleaned.length === 6) {
+                return {
+                  r: parseInt(cleaned.slice(0, 2), 16),
+                  g: parseInt(cleaned.slice(2, 4), 16),
+                  b: parseInt(cleaned.slice(4, 6), 16),
+                };
+              }
+              return null;
+            }
+
+            const rgb = hexToRgb(accentStart);
+            if (rgb) {
+              const { r, g, b } = rgb;
+              root.style.setProperty(
+                "--accent-soft-15",
+                `rgba(${r}, ${g}, ${b}, 0.15)`,
+              );
+              root.style.setProperty(
+                "--accent-soft-20",
+                `rgba(${r}, ${g}, ${b}, 0.2)`,
+              );
+              root.style.setProperty(
+                "--accent-soft-25",
+                `rgba(${r}, ${g}, ${b}, 0.25)`,
+              );
+              root.style.setProperty(
+                "--accent-soft-30",
+                `rgba(${r}, ${g}, ${b}, 0.3)`,
+              );
+              root.style.setProperty(
+                "--accent-soft-50",
+                `rgba(${r}, ${g}, ${b}, 0.5)`,
+              );
+            }
           } catch (err) {
             console.error("Failed to apply theme config", err);
           }

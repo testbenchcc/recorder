@@ -37,6 +37,8 @@ const defaultConfig = {
     text: "#cdd6f4",
     subtext1: "#bac2de",
     overlay2: "#9399b2",
+    accent_start: "#c86b23",
+    accent_end: "#f39237",
   },
   default_max_duration_seconds: 7200,
 };
@@ -157,6 +159,8 @@ function applyTheme(config) {
   const textEl = document.getElementById("theme-text");
   const subtext1El = document.getElementById("theme-subtext1");
   const overlay2El = document.getElementById("theme-overlay2");
+  const accentStartEl = document.getElementById("theme-accent-start");
+  const accentEndEl = document.getElementById("theme-accent-end");
 
   if (!baseEl) return;
 
@@ -167,6 +171,8 @@ function applyTheme(config) {
   textEl.value = cfg.text;
   subtext1El.value = cfg.subtext1;
   overlay2El.value = cfg.overlay2;
+  if (accentStartEl) accentStartEl.value = cfg.accent_start;
+  if (accentEndEl) accentEndEl.value = cfg.accent_end;
 }
 
 function applyDefaultMaxDuration(config) {
@@ -243,6 +249,8 @@ async function saveConfig(e) {
   const themeTextEl = document.getElementById("theme-text");
   const themeSubtext1El = document.getElementById("theme-subtext1");
   const themeOverlay2El = document.getElementById("theme-overlay2");
+  const themeAccentStartEl = document.getElementById("theme-accent-start");
+  const themeAccentEndEl = document.getElementById("theme-accent-end");
 
   const defaultMaxDuration = Number.parseInt(
     defaultMaxDurationEl.value.trim(),
@@ -329,6 +337,12 @@ async function saveConfig(e) {
       text: themeTextEl.value || defaultConfig.theme.text,
       subtext1: themeSubtext1El.value || defaultConfig.theme.subtext1,
       overlay2: themeOverlay2El.value || defaultConfig.theme.overlay2,
+      accent_start:
+        (themeAccentStartEl && themeAccentStartEl.value) ||
+        defaultConfig.theme.accent_start,
+      accent_end:
+        (themeAccentEndEl && themeAccentEndEl.value) ||
+        defaultConfig.theme.accent_end,
     },
     default_max_duration_seconds: defaultMaxDuration,
   };

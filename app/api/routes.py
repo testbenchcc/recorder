@@ -77,6 +77,8 @@ class ThemeConfig(BaseModel):
     text: str = "#cdd6f4"
     subtext1: str = "#bac2de"
     overlay2: str = "#9399b2"
+    accent_start: str = "#c86b23"
+    accent_end: str = "#f39237"
 
 
 class AppConfig(BaseModel):
