@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Optional
 
 from pydantic_settings import BaseSettings
 
@@ -9,6 +10,10 @@ class Settings(BaseSettings):
     channels: int = 2
     alsa_device: str = "hw:1,0"
     recording_dir: str = "recordings"
+    recordings_local_root: Optional[str] = None
+    recordings_secondary_root: str = ""
+    secondary_storage_enabled: bool = False
+    keep_local_after_sync: bool = True
     max_single_recording_seconds: int = 2 * 60 * 60
     retention_hours: int = 48
     vad_binary: str = "vad-speech-segments"
@@ -22,6 +27,11 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"
+
+    def get_local_recordings_root(self) -> str:
+        if self.recordings_local_root:
+            return self.recordings_local_root
+        return self.recording_dir
 
 
 @lru_cache()
