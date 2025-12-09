@@ -5,12 +5,11 @@
 {% block content %}
 <div class="row">
   <div class="col-md-8">
-    <div class="card">
-      <div class="card-header">Configuration</div>
-      <div class="card-body">
-        <div id="config-messages" class="mb-2"></div>
-        <form id="config-form">
-          <h5 class="mb-3">Recording light</h5>
+    <div id="config-messages" class="mb-3"></div>
+    <form id="config-form" class="d-flex flex-column gap-3">
+      <div class="card">
+        <div class="card-header">Recording light</div>
+        <div class="card-body">
           <div class="form-check form-switch mb-3">
             <input
               class="form-check-input"
@@ -37,7 +36,7 @@
               value="20"
             />
           </div>
-          <div class="mb-3">
+          <div class="mb-0">
             <label for="light-color" class="form-label">Color</label>
             <input
               type="color"
@@ -47,8 +46,12 @@
               title="Choose recording light color"
             />
           </div>
-          <hr />
-          <h5 class="mb-3">Whisper transcription server</h5>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Whisper transcription server</div>
+        <div class="card-body">
           <div class="form-check form-switch mb-3">
             <input
               class="form-check-input"
@@ -124,7 +127,7 @@
               Maps to the <code>temperature_inc</code> parameter for <code>/inference</code>.
             </div>
           </div>
-          <div class="mb-3">
+          <div class="mb-0">
             <label for="whisper-model-path" class="form-label">
               Default model path
             </label>
@@ -138,8 +141,12 @@
               Optional default path for the model to load via the <code>/load</code> endpoint.
             </div>
           </div>
-          <hr />
-          <h5 class="mb-3">VAD segmentation</h5>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">VAD segmentation</div>
+        <div class="card-body">
           <div class="mb-3">
             <label for="vad-threshold" class="form-label">
               VAD threshold
@@ -199,7 +206,7 @@
               Maps to <code>--vad-speech-pad-ms</code>. Adds padding before/after detected speech.
             </div>
           </div>
-          <div class="mb-3">
+          <div class="mb-0">
             <label for="vad-samples-overlap" class="form-label">
               Samples overlap (seconds)
             </label>
@@ -215,7 +222,12 @@
               Maps to <code>--vad-samples-overlap</code>. Controls overlap between analysis windows.
             </div>
           </div>
-          <hr />
+        </div>
+      </div>
+
+      <div class="card mb-0">
+        <div class="card-header">Recording defaults</div>
+        <div class="card-body">
           <div class="mb-3">
             <label for="default-max-duration-seconds" class="form-label">
               Default max duration (seconds)
@@ -231,9 +243,9 @@
             </div>
           </div>
           <button type="submit" class="btn btn-primary">Save configuration</button>
-        </form>
+        </div>
       </div>
-    </div>
+    </form>
   </div>
 </div>
 {% endblock %}
