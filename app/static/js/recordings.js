@@ -211,6 +211,34 @@ function getTranscriptSegmentIndexFromRegionId(regionId) {
   return Number.isFinite(idx) ? idx : null;
 }
 
+function getTranscriptRegionIdAtTime(timeSeconds) {
+  if (
+    !Array.isArray(transcriptSegments) ||
+    !transcriptSegments.length ||
+    !Number.isFinite(timeSeconds)
+  ) {
+    return null;
+  }
+
+  const t = Math.max(0, timeSeconds);
+  const margin = 0.05;
+
+  for (const seg of transcriptSegments) {
+    if (!seg) continue;
+    const start = Math.max(0, seg.start);
+    const end = Math.max(start, seg.end);
+    if (t + margin < start) {
+      // Segments are in order; can stop as soon as we pass the current time.
+      break;
+    }
+    if (t >= start - margin && t <= end + margin) {
+      return typeof seg.index === "number" ? `seg-${seg.index}` : null;
+    }
+  }
+
+  return null;
+}
+
 function highlightTranscriptSegmentContent(segmentIndex) {
   const highlighted = document.querySelectorAll(".transcript-segment-highlight");
   highlighted.forEach((el) => el.classList.remove("transcript-segment-highlight"));
@@ -559,6 +587,12 @@ function initTranscriptWaveform(recordingId, segments) {
       transcriptWaveTimeupdateUnsub = ws.on(
         "timeupdate",
         (currentTime) => {
+          // Keep the transcript content highlight in sync with playback.
+          const activeRegionAtTime = getTranscriptRegionIdAtTime(currentTime);
+          if (activeRegionAtTime !== transcriptActiveRegionId) {
+            setActiveTranscriptRegion(activeRegionAtTime);
+          }
+
           if (
             !transcriptSkipSilenceMode ||
             !Array.isArray(transcriptSegments) ||
