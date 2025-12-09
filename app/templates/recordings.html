@@ -56,229 +56,246 @@
         ></button>
       </div>
       <div class="modal-body">
-        <div class="mb-2">
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <label
-              for="transcript-format"
-              class="form-label mb-0 small me-2"
-            >
-              Response format
-            </label>
-            <select
-              id="transcript-format"
-              class="form-select form-select-sm"
-              style="width: auto; min-width: 140px;"
-            >
-              <option value="json">json</option>
-              <option value="text">text</option>
-              <option value="srt">srt</option>
-              <option value="vtt">vtt</option>
-              <option value="vad_sequential">VAD + Sequential</option>
-            </select>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-vad-redo-btn"
-            >
-              Regen VAD
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-primary"
-              id="transcript-retry-btn"
-            >
-              Resend
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-danger"
-              id="transcript-stop-btn"
-              disabled
-            >
-              Stop
-            </button>
-            <div
-              id="transcript-vad-options"
-              class="d-flex align-items-center gap-2 ms-2"
-              style="display: none;"
-            >
-              <div class="form-check mb-0">
-                <input
-                  class="form-check-input me-1"
-                  type="checkbox"
-                  id="transcript-show-segment-timestamps"
-                  checked
-                />
-                <label
-                  class="form-check-label small"
-                  for="transcript-show-segment-timestamps"
-                >
-                  Show segment timestamps
-                </label>
-              </div>
-              <div class="form-check mb-0">
-                <input
-                  class="form-check-input me-1"
-                  type="checkbox"
-                  id="transcript-per-response-newline"
-                  checked
-                />
-                <label
-                  class="form-check-label small"
-                  for="transcript-per-response-newline"
-                >
-                  New line per response
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
         <div
-          id="transcript-loading"
-          class="align-items-center mb-2"
-          style="display: none;"
+          id="transcript-layout"
+          class="transcript-layout"
         >
           <div
-            class="spinner-border spinner-border-sm me-2"
-            role="status"
-            aria-hidden="true"
-          ></div>
-          <div class="small">
-            <div id="transcript-status-line">
-              Uploading and processing audio now
-            </div>
-            <div id="transcript-elapsed" class="text-muted"></div>
-          </div>
-        </div>
-        <div
-          id="transcript-progress"
-          class="mb-2"
-          style="display: none;"
-        >
-          <div
-            id="transcript-progress-label"
-            class="small mb-1"
-          ></div>
-          <div class="progress" style="height: 6px;">
-            <div
-              id="transcript-progress-bar"
-              class="progress-bar"
-              role="progressbar"
-              style="width: 0%;"
-              aria-valuenow="0"
-              aria-valuemin="0"
-              aria-valuemax="100"
-            ></div>
-          </div>
-        </div>
-        <pre
-          id="transcript-content"
-          class="small"
-          style="display: none; white-space: pre-wrap; max-height: 45vh; overflow-y: auto;"
-        ></pre>
-        <div
-          id="transcript-chat"
-          class="small border rounded p-2"
-          style="display: none; max-height: 45vh; overflow-y: auto;"
-        ></div>
-      </div>
-      <div class="modal-footer flex-column align-items-stretch">
-        <div
-          id="transcript-waveform-container"
-          class="w-100 mb-2"
-        >
-          <div class="small text-muted mb-1">
-            Audio timeline with detected speech segments
-          </div>
-          <div
-            id="transcript-waveform"
-            class="border rounded"
-            style="width: 100%; min-height: 80px; background: #f8f9fa;"
-          ></div>
-          <div
-            id="transcript-audio-controls"
-            class="mt-2 d-flex flex-wrap align-items-center gap-2"
+            id="transcript-controls"
+            class="mb-2"
           >
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-primary"
-              id="transcript-audio-play-all"
-            >
-              Play all
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-primary"
-              id="transcript-audio-play-nosilence"
-            >
-              Play without silence
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-audio-pause"
-            >
-              Pause
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-audio-stop"
-            >
-              Stop
-            </button>
-            <div
-              class="vr d-none d-md-block"
-              style="height: 24px;"
-            ></div>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-audio-back-10"
-            >
-              -10s
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-audio-back-5"
-            >
-              -5s
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-audio-forward-5"
-            >
-              +5s
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary"
-              id="transcript-audio-forward-10"
-            >
-              +10s
-            </button>
-            <div class="ms-auto d-flex align-items-center gap-1">
+            <div class="d-flex flex-wrap align-items-center gap-2">
               <label
-                for="transcript-audio-speed"
-                class="small mb-0"
+                for="transcript-format"
+                class="form-label mb-0 small me-2"
               >
-                Speed
+                Response format
               </label>
               <select
-                id="transcript-audio-speed"
+                id="transcript-format"
                 class="form-select form-select-sm"
-                style="width: auto; min-width: 80px;"
+                style="width: auto; min-width: 140px;"
               >
-                <option value="0.75">0.75x</option>
-                <option value="1" selected>1x</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
+                <option value="json">json</option>
+                <option value="text">text</option>
+                <option value="srt">srt</option>
+                <option value="vtt">vtt</option>
+                <option value="vad_sequential">VAD + Sequential</option>
               </select>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-vad-redo-btn"
+              >
+                Regen VAD
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                id="transcript-retry-btn"
+              >
+                Resend
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-danger"
+                id="transcript-stop-btn"
+                disabled
+              >
+                Stop
+              </button>
+              <div
+                id="transcript-vad-options"
+                class="d-flex align-items-center gap-2 ms-2"
+                style="display: none;"
+              >
+                <div class="form-check mb-0">
+                  <input
+                    class="form-check-input me-1"
+                    type="checkbox"
+                    id="transcript-show-segment-timestamps"
+                    checked
+                  />
+                  <label
+                    class="form-check-label small"
+                    for="transcript-show-segment-timestamps"
+                  >
+                    Show segment timestamps
+                  </label>
+                </div>
+                <div class="form-check mb-0">
+                  <input
+                    class="form-check-input me-1"
+                    type="checkbox"
+                    id="transcript-per-response-newline"
+                    checked
+                  />
+                  <label
+                    class="form-check-label small"
+                    for="transcript-per-response-newline"
+                  >
+                    New line per response
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div
+              id="transcript-loading"
+              class="align-items-center mt-2"
+              style="display: none;"
+            >
+              <div
+                class="spinner-border spinner-border-sm me-2"
+                role="status"
+                aria-hidden="true"
+              ></div>
+              <div class="small">
+                <div id="transcript-status-line">
+                  Uploading and processing audio now
+                </div>
+                <div id="transcript-elapsed" class="text-muted"></div>
+              </div>
+            </div>
+            <div
+              id="transcript-progress"
+              class="mt-2"
+              style="display: none;"
+            >
+              <div
+                id="transcript-progress-label"
+                class="small mb-1"
+              ></div>
+              <div class="progress" style="height: 6px;">
+                <div
+                  id="transcript-progress-bar"
+                  class="progress-bar"
+                  role="progressbar"
+                  style="width: 0%;"
+                  aria-valuenow="0"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                ></div>
+              </div>
+            </div>
+          </div>
+          <div
+            id="transcript-waveform-container"
+            class="transcript-timeline"
+          >
+            <div class="small text-muted mb-1">
+              Audio timeline with detected speech segments
+            </div>
+            <div
+              id="transcript-waveform"
+              class="border rounded"
+            ></div>
+            <div
+              id="transcript-audio-controls"
+              class="mt-2 d-flex flex-wrap align-items-center gap-2"
+            >
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                id="transcript-audio-play-all"
+              >
+                Play all
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-primary"
+                id="transcript-audio-play-nosilence"
+              >
+                Play without silence
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-audio-pause"
+              >
+                Pause
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-audio-stop"
+              >
+                Stop
+              </button>
+              <div
+                class="vr d-none d-md-block"
+                style="height: 24px;"
+              ></div>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-audio-back-10"
+              >
+                -10s
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-audio-back-5"
+              >
+                -5s
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-audio-forward-5"
+              >
+                +5s
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-secondary"
+                id="transcript-audio-forward-10"
+              >
+                +10s
+              </button>
+              <div class="ms-auto d-flex align-items-center gap-1">
+                <label
+                  for="transcript-audio-speed"
+                  class="small mb-0"
+                >
+                  Speed
+                </label>
+                <select
+                  id="transcript-audio-speed"
+                  class="form-select form-select-sm"
+                  style="width: auto; min-width: 80px;"
+                >
+                  <option value="0.75">0.75x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.5">1.5x</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div
+            id="transcript-content-cell"
+            class="transcript-content-cell"
+          >
+            <div
+              id="transcript-content-scroll"
+              class="border rounded p-2 bg-light"
+            >
+              <pre
+                id="transcript-content"
+                class="small mb-0"
+                style="display: none; white-space: pre-wrap;"
+              ></pre>
+              <div
+                id="transcript-chat"
+                class="small"
+                style="display: none;"
+              ></div>
             </div>
           </div>
         </div>
+      </div>
+      <div class="modal-footer flex-column align-items-stretch">
         <div class="w-100 d-flex justify-content-end">
           <button
             type="button"
@@ -295,6 +312,53 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+  #transcript-modal .transcript-layout {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "controls controls"
+      "timeline content";
+    column-gap: 1rem;
+    row-gap: 0.75rem;
+    max-height: 70vh;
+  }
+
+  #transcript-modal #transcript-controls {
+    grid-area: controls;
+  }
+
+  #transcript-modal .transcript-timeline {
+    grid-area: timeline;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #transcript-modal #transcript-waveform {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 80px;
+    background: #f8f9fa;
+    position: relative;
+    transform: rotate(-90deg);
+    transform-origin: center center;
+  }
+
+  #transcript-modal .transcript-content-cell {
+    grid-area: content;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  #transcript-modal #transcript-content-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+</style>
 <script src="/static/node_modules/wavesurfer.js/dist/wavesurfer.min.js"></script>
 <script src="/static/node_modules/wavesurfer.js/dist/plugins/regions.min.js"></script>
 <script src="/static/js/recordings.js"></script>
