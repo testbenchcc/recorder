@@ -1075,14 +1075,14 @@ async function loadCachedTranscription(id, normalizedFormat) {
       setTranscriptLoading(loadingEl, false);
     }
 
+    // Check for cached VAD segments for all formats (useful for timeline annotations)
+    const vadSegments = Array.isArray(data.vad_segments) ? data.vad_segments : null;
+    if (vadSegments && vadSegments.length) {
+      setCachedVadSegments(id, vadSegments);
+    }
+
     if (normalizedFormat === "vad_sequential") {
-      const vadSegments = Array.isArray(data.vad_segments) ? data.vad_segments : null;
       const segments = Array.isArray(data.segments) ? data.segments : [];
-      
-      // Cache VAD segments for future use
-      if (vadSegments && vadSegments.length) {
-        setCachedVadSegments(id, vadSegments);
-      }
 
       const newlinePerResponse = shouldUseNewlinePerResponse();
 
@@ -1117,6 +1117,12 @@ async function loadCachedTranscription(id, normalizedFormat) {
       contentEl.textContent =
         (data.content && String(data.content)) ||
         "[Empty transcription response]";
+      
+      // Initialize waveform with cached VAD segments if available (for timeline annotations)
+      const cachedVadSegments = getCachedVadSegments(id);
+      if (cachedVadSegments && cachedVadSegments.length) {
+        initTranscriptWaveform(id, cachedVadSegments);
+      }
     }
 
     return true;
