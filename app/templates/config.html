@@ -8,8 +8,10 @@
     <h4 class="mb-0">Configuration</h4>
   </div>
   <div id="config-messages" class="mb-3"></div>
-  <form id="config-form" class="d-flex flex-column gap-3">
-      <div class="card">
+  <form id="config-form">
+    <div class="row g-3">
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
         <div class="card-header">Recording light</div>
         <div class="card-body">
           <div class="form-check form-switch mb-3">
@@ -49,9 +51,11 @@
             />
           </div>
         </div>
+        </div>
       </div>
 
-      <div class="card">
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
         <div class="card-header">Whisper transcription server</div>
         <div class="card-body">
           <div class="form-check form-switch mb-3">
@@ -144,9 +148,11 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
 
-      <div class="card">
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
         <div class="card-header">VAD segmentation</div>
         <div class="card-body">
           <div class="mb-3">
@@ -225,9 +231,11 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
 
-      <div class="card mb-0">
+      <div class="col-12 col-md-6 col-lg-4">
+        <div class="card h-100">
         <div class="card-header">Recording defaults</div>
         <div class="card-body">
           <div class="mb-3">
@@ -246,7 +254,9 @@
           </div>
           <button type="submit" class="btn btn-sm btn-primary">Save configuration</button>
         </div>
+        </div>
       </div>
+    </div>
   </form>
 </div>
 {% endblock %}
