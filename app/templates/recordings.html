@@ -522,8 +522,6 @@
   import WaveSurfer from '/static/node_modules/wavesurfer.js/dist/wavesurfer.esm.js';
   import Regions from '/static/node_modules/wavesurfer.js/dist/plugins/regions.esm.js';
   
-  WaveSurfer.create.registerPlugin(Regions);
-  
   document.addEventListener('DOMContentLoaded', () => {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
