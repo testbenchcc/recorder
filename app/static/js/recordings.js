@@ -921,34 +921,41 @@ function appendTranscriptChatMessage(content, segmentIndex, start, end) {
   }
 }
 
-function sortRecordings(sortType) {
-  let sorted = [...allRecordings];
+function applyFiltersAndSort() {
+  const sortSelect = document.getElementById("sort-select");
+  const filterTranscribed = document.getElementById("filter-transcribed");
   
+  let filtered = [...allRecordings];
+  
+  // Apply transcription filter
+  if (filterTranscribed && filterTranscribed.checked) {
+    filtered = filtered.filter(item => transcriptVadSegmentsCache.has(item.id));
+  }
+  
+  // Apply sorting
+  const sortType = sortSelect ? sortSelect.value : 'newest';
   switch (sortType) {
     case 'newest':
-      sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       break;
     case 'oldest':
-      sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       break;
     case 'largest':
-      sorted.sort((a, b) => b.size_bytes - a.size_bytes);
+      filtered.sort((a, b) => b.size_bytes - a.size_bytes);
       break;
     case 'smallest':
-      sorted.sort((a, b) => a.size_bytes - b.size_bytes);
+      filtered.sort((a, b) => a.size_bytes - b.size_bytes);
       break;
     case 'longest':
-      sorted.sort((a, b) => b.duration_seconds - a.duration_seconds);
+      filtered.sort((a, b) => b.duration_seconds - a.duration_seconds);
       break;
     case 'shortest':
-      sorted.sort((a, b) => a.duration_seconds - b.duration_seconds);
-      break;
-    case 'transcribed':
-      sorted = sorted.filter(item => transcriptVadSegmentsCache.has(item.id));
+      filtered.sort((a, b) => a.duration_seconds - b.duration_seconds);
       break;
   }
   
-  renderRecordings(sorted);
+  renderRecordings(filtered);
 }
 
 function updateBulkActionsBar() {
@@ -1971,7 +1978,14 @@ window.addEventListener("DOMContentLoaded", () => {
   const sortSelect = document.getElementById("sort-select");
   if (sortSelect) {
     sortSelect.addEventListener("change", () => {
-      sortRecordings(sortSelect.value);
+      applyFiltersAndSort();
+    });
+  }
+  
+  const filterTranscribed = document.getElementById("filter-transcribed");
+  if (filterTranscribed) {
+    filterTranscribed.addEventListener("change", () => {
+      applyFiltersAndSort();
     });
   }
   
