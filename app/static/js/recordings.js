@@ -341,10 +341,10 @@ function initTranscriptWaveform(recordingId, segments) {
 
       transcriptWavesurfer = WaveSurfer.create({
         container,
+        height: "auto",
         waveColor: "rgba(0, 0, 0, 0.25)",
         progressColor: "#0d6efd",
         cursorColor: "#0d6efd",
-        vertical: true,
         responsive: true,
         url: audioUrl || getTranscriptAudioStreamUrl(recordingId),
       });
