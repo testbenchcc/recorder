@@ -1077,38 +1077,23 @@ async function loadCachedTranscription(id, normalizedFormat) {
 
     if (normalizedFormat === "vad_sequential") {
       const vadSegments = Array.isArray(data.vad_segments) ? data.vad_segments : null;
+      const segments = Array.isArray(data.segments) ? data.segments : [];
+      
+      // Cache VAD segments for future use
       if (vadSegments && vadSegments.length) {
-        if (normalizedFormat === "vad_sequential") {
-          const vadSegments = Array.isArray(data.vad_segments) ? data.vad_segments : null;
-          if (vadSegments && vadSegments.length) {
-            setCachedVadSegments(id, vadSegments);
-          }
+        setCachedVadSegments(id, vadSegments);
+      }
 
-          const segments = Array.isArray(data.segments) ? data.segments : [];
-          const newlinePerResponse = shouldUseNewlinePerResponse();
+      const newlinePerResponse = shouldUseNewlinePerResponse();
 
-          if (newlinePerResponse) {
-            for (const seg of segments) {
-              appendTranscriptChatMessage(
-                seg.content || "",
-                seg.index,
-                seg.start,
-                seg.end,
-              );
-            }
-          } else if (contentEl) {
-            contentEl.style.display = "block";
-            contentEl.classList.add(
-              "border",
-              "rounded",
-              "px-2",
-              "py-1",
-              "bg-light",
-            );
-            const text = (data.content || "").replace(/\s+/g, " ").trim();
-            contentEl.textContent = text || "[Empty transcription response]";
-          }
-          initTranscriptWaveform(id, segments);
+      if (newlinePerResponse) {
+        for (const seg of segments) {
+          appendTranscriptChatMessage(
+            seg.content || "",
+            seg.index,
+            seg.start,
+            seg.end,
+          );
         }
       } else if (contentEl) {
         contentEl.style.display = "block";
@@ -1122,6 +1107,7 @@ async function loadCachedTranscription(id, normalizedFormat) {
         const text = (data.content || "").replace(/\s+/g, " ").trim();
         contentEl.textContent = text || "[Empty transcription response]";
       }
+      
       initTranscriptWaveform(id, segments);
     } else if (contentEl) {
       if (chatEl) {
@@ -1181,32 +1167,59 @@ async function transcribeRecordingVadSequential(id, forceVad) {
     retryBtn.disabled = true;
   }
 
-  setTranscriptLoading(loadingEl, true);
-  setTranscriptStatusText("Detecting speech segments in audio file...");
+  // Check for cached VAD segments first, unless forceVad is true
+  let segments = [];
+  if (!forceVad) {
+    const cachedSegments = getCachedVadSegments(id);
+    if (cachedSegments && cachedSegments.length > 0) {
+      segments = cachedSegments;
+      console.log(`Using ${segments.length} cached VAD segments`);
+    }
+  }
 
-  try {
-    const vadUrl = forceVad
-      ? `/recordings/${id}/vad_segments?force=true`
-      : `/recordings/${id}/vad_segments`;
-    const vadRes = await fetch(vadUrl, { method: "POST" });
-    if (!vadRes.ok) {
-      const body = await vadRes.json().catch(() => ({}));
-      errorMessage =
-        body.detail ||
-        `Failed to detect speech segments (${vadRes.status})`;
+  // If no cached segments or forceVad is true, fetch from API
+  if (segments.length === 0) {
+    setTranscriptLoading(loadingEl, true);
+    setTranscriptStatusText("Detecting speech segments in audio file...");
+
+    try {
+      const vadUrl = forceVad
+        ? `/recordings/${id}/vad_segments?force=true`
+        : `/recordings/${id}/vad_segments`;
+      const vadRes = await fetch(vadUrl, { method: "POST" });
+      if (!vadRes.ok) {
+        const body = await vadRes.json().catch(() => ({}));
+        errorMessage =
+          body.detail ||
+          `Failed to detect speech segments (${vadRes.status})`;
+        setRecordingsMessage(errorMessage, "danger");
+        return;
+      }
+
+      const vadData = await vadRes.json();
+      segments = Array.isArray(vadData.segments)
+        ? vadData.segments
+        : [];
+      
+      // Cache the segments for future use
+      if (segments.length > 0) {
+        setCachedVadSegments(id, segments);
+      }
+    } catch (err) {
+      console.error(err);
+      errorMessage = "Error detecting speech segments";
       setRecordingsMessage(errorMessage, "danger");
       return;
     }
+  }
 
-    const vadData = await vadRes.json();
-    const segments = Array.isArray(vadData.segments)
-      ? vadData.segments
-      : [];
+  try {
 
     if (!segments.length) {
       errorMessage =
         "No speech segments were detected in the audio file.";
       setTranscriptStatusText(errorMessage);
+      setTranscriptLoading(loadingEl, false);
       return;
     }
 
@@ -1301,7 +1314,7 @@ async function transcribeRecordingVadSequential(id, forceVad) {
     }
   } catch (err) {
     console.error(err);
-    errorMessage = "Error running VAD + Sequential transcription";
+    errorMessage = "Error processing transcription segments";
     setRecordingsMessage(errorMessage, "danger");
   } finally {
     if (retryBtn) {

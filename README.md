@@ -119,7 +119,11 @@ chmod +x run.sh
 
 Once the app is running, open the web UI (for example, `http://recorder:8080`). On the Home page you can use the **Browser recorder** card to capture short test clips directly in the browser using the device microphone. Finished clips are uploaded to the server, converted to WAV (using `ffmpeg`) with the same layout as ALSA-based recordings, and will appear on the **Recordings** page like any other file.
 
-> **Tip:** In the transcription modal, the **Resend** button now re-runs transcription while reusing the cached VAD segmentation. Use **Regen VAD** if you actually want to recompute the detected speech regions.
+> **Tip:** The transcription modal now intelligently caches data:
+> - **Opening the modal**: Loads cached transcriptions and VAD segments when available, avoiding unnecessary API calls
+> - **Resend button**: Re-runs transcription while reusing cached VAD segments
+> - **Regen VAD button**: Forces recomputation of speech detection regions and clears the cache
+> - **Format switching**: Changing response formats uses cached data when available
 
 To update the program run the following inside the repo folder and restart the device:
 
