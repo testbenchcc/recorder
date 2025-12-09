@@ -17,6 +17,7 @@ let transcriptTotalSegments = 0;
 let transcriptCompletedSegments = 0;
 let transcriptAbortRequested = false;
 let transcriptWavesurfer = null;
+let transcriptRegionsPlugin = null;
 let transcriptSegments = [];
 let transcriptSkipSilenceMode = false;
 let transcriptWaveTimeupdateUnsub = null;
@@ -50,6 +51,97 @@ function resizeTranscriptWaveformVertical() {
   const height = outerEl.clientHeight;
   if (!height) return;
   innerEl.style.width = `${height}px`;
+}
+
+function clearTranscriptRegions() {
+  if (
+    transcriptRegionsPlugin &&
+    typeof transcriptRegionsPlugin.clearRegions === "function"
+  ) {
+    transcriptRegionsPlugin.clearRegions();
+  }
+}
+
+function getTranscriptSegmentLabel(seg) {
+  if (!seg) return "";
+  const content = (seg.content || "").trim();
+  if (content) {
+    const maxLength = 120;
+    return content.length > maxLength
+      ? `${content.slice(0, maxLength - 3)}...`
+      : content;
+  }
+  if (typeof seg.index === "number") {
+    return `Segment ${seg.index + 1}`;
+  }
+  return "Segment";
+}
+
+function syncTranscriptRegionsFromSegments() {
+  if (
+    !transcriptRegionsPlugin ||
+    typeof transcriptRegionsPlugin.clearRegions !== "function" ||
+    typeof transcriptRegionsPlugin.addRegion !== "function"
+  ) {
+    return;
+  }
+
+  clearTranscriptRegions();
+
+  if (!Array.isArray(transcriptSegments) || !transcriptSegments.length) {
+    return;
+  }
+
+  transcriptSegments.forEach((seg) => {
+    if (!seg) return;
+    const start = Math.max(0, seg.start);
+    const end = Math.max(start, seg.end);
+    if (end <= start) return;
+
+    transcriptRegionsPlugin.addRegion({
+      id: `seg-${seg.index}`,
+      start,
+      end,
+      drag: false,
+      resize: false,
+      content: getTranscriptSegmentLabel(seg),
+      color: "rgba(13, 110, 253, 0.15)",
+    });
+  });
+}
+
+function updateTranscriptSegmentContent(segIndex, content) {
+  if (
+    !Array.isArray(transcriptSegments) ||
+    segIndex == null ||
+    segIndex < 0 ||
+    segIndex >= transcriptSegments.length
+  ) {
+    return;
+  }
+
+  const seg = transcriptSegments[segIndex];
+  if (!seg) return;
+  seg.content = content || "";
+
+  if (
+    !transcriptRegionsPlugin ||
+    typeof transcriptRegionsPlugin.getRegions !== "function"
+  ) {
+    return;
+  }
+
+  const regionId = `seg-${seg.index}`;
+  const region = transcriptRegionsPlugin
+    .getRegions()
+    .find((r) => r && r.id === regionId);
+  const label = getTranscriptSegmentLabel(seg);
+
+  if (region && typeof region.setOptions === "function") {
+    region.setOptions({ content: label });
+  } else {
+    syncTranscriptRegionsFromSegments();
+  }
 }
 
 function getTranscriptAudioStreamUrl(recordingId) {
@@ -293,6 +385,7 @@ function destroyTranscriptWaveform() {
   transcriptWavesurfer = null;
   transcriptSegments = [];
   transcriptWaveformTimelineEl = null;
+  transcriptRegionsPlugin = null;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
@@ -339,6 +432,18 @@ function initTranscriptWaveform(recordingId, segments) {
         return;
       }
 
+      const regions =
+        WaveSurfer &&
+        WaveSurfer.Regions &&
+        typeof WaveSurfer.Regions.create === "function"
+          ? WaveSurfer.Regions.create({
+              drag: false,
+              resize: false,
+              contentEditable: false,
+            })
+          : null;
+      transcriptRegionsPlugin = regions || null;
+
       transcriptWavesurfer = WaveSurfer.create({
         container,
         height: 80,
@@ -347,6 +452,7 @@ function initTranscriptWaveform(recordingId, segments) {
         progressColor: "#0d6efd",
         cursorColor: "#0d6efd",
         responsive: true,
+        plugins: regions ? [regions] : [],
         url: audioUrl || getTranscriptAudioStreamUrl(recordingId),
       });
 
@@ -354,6 +460,22 @@ function initTranscriptWaveform(recordingId, segments) {
       if (!ws || typeof ws.on !== "function") {
         return;
       }
+
+      if (regions && typeof regions.on === "function") {
+        regions.on("region-clicked", (region, event) => {
+          if (!region || !transcriptWavesurfer) return;
+          if (event && typeof event.preventDefault === "function") {
+            event.preventDefault();
+          }
+          if (event && typeof event.stopPropagation === "function") {
+            event.stopPropagation();
+          }
+          const { start, end } = region;
+          transcriptWavesurfer.play(start, end).catch(() => {});
+        });
+      }
+
+      syncTranscriptRegionsFromSegments();
 
       // Update skip-silence playback when the audio is ready and during playback.
       transcriptWaveTimeupdateUnsub = ws.on(
@@ -886,6 +1008,7 @@ async function transcribeRecordingVadSequential(id, forceVad) {
       const newlinePerResponse = shouldUseNewlinePerResponse();
       if (newlinePerResponse) {
         appendTranscriptChatMessage(content, i, seg.start, seg.end);
+        updateTranscriptSegmentContent(i, content);
       } else {
         contentEl.style.display = "block";
         contentEl.classList.add("border", "rounded", "px-2", "py-1", "bg-light");
@@ -902,6 +1025,7 @@ async function transcribeRecordingVadSequential(id, forceVad) {
         contentEl.textContent = existing
           ? `${existing}${needsSpace ? " " : ""}${addition}`
           : addition;
+        updateTranscriptSegmentContent(i, addition);
       }
 
       completed += 1;
