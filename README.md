@@ -121,6 +121,7 @@ Once the app is running, open the web UI (for example, `http://recorder:8080`). 
 
 - **Controls card**: Control hardware-based ALSA recordings with Start and Stop buttons (disabled when idle)
 - **Browser recorder card**: Capture short test clips directly in the browser with Start, Pause, Stop, and Cancel buttons. The first available microphone is automatically selected for convenience.
+ - **Remote listening card**: Listen to the Pi microphone in near real time from any browser connected to the web UI.
 
 Browser recordings are uploaded to the server, converted to WAV (using `ffmpeg`) with the same layout as ALSA-based recordings, and appear on the **Recordings** page like any other file.
 

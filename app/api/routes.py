@@ -13,7 +13,7 @@ from typing import List, Optional, Tuple
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
@@ -434,6 +434,64 @@ def config() -> dict:
         "max_single_recording_seconds": settings.max_single_recording_seconds,
         "retention_hours": settings.retention_hours,
     }
+
+
+@router.get("/live/stream")
+def live_stream():
+    cmd = [
+        "ffmpeg",
+        "-f",
+        "alsa",
+        "-ac",
+        str(settings.channels),
+        "-ar",
+        str(settings.sample_rate),
+        "-i",
+        settings.alsa_device,
+        "-acodec",
+        "libopus",
+        "-f",
+        "webm",
+        "-",
+    ]
+
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+    except FileNotFoundError as exc:
+        logger.error("ffmpeg not found while starting live stream")
+        raise HTTPException(
+            status_code=500,
+            detail="Live listening requires ffmpeg to be installed on the server",
+        ) from exc
+    except OSError as exc:
+        logger.error("Failed to start ffmpeg for live stream: %s", exc)
+        raise HTTPException(
+            status_code=500, detail="Failed to start live audio stream"
+        ) from exc
+
+    if proc.stdout is None:
+        raise HTTPException(
+            status_code=500, detail="Failed to start live audio stream"
+        )
+
+    def iter_stream():
+        try:
+            while True:
+                chunk = proc.stdout.read(4096)
+                if not chunk:
+                    break
+                yield chunk
+        finally:
+            with contextlib.suppress(Exception):
+                proc.terminate()
+            with contextlib.suppress(Exception):
+                proc.kill()
+
+    return StreamingResponse(iter_stream(), media_type="audio/webm")
 
 
 @router.get("/ui/config")

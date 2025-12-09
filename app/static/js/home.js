@@ -1,6 +1,10 @@
 let statusTimer = null;
 let currentStartedAt = null;
 let storageChart = null;
+let liveAudio = null;
+let liveStartBtn = null;
+let liveStopBtn = null;
+let liveStatusBadge = null;
 
 function setMessage(text, type = "info") {
   const container = document.getElementById("messages");
@@ -302,9 +306,94 @@ async function stopRecording() {
   }
 }
 
+function setLiveStatus(isActive) {
+  if (!liveStatusBadge) return;
+  if (isActive) {
+    liveStatusBadge.textContent = "Listening";
+    liveStatusBadge.classList.remove("bg-secondary");
+    liveStatusBadge.classList.add("bg-success");
+  } else {
+    liveStatusBadge.textContent = "Idle";
+    liveStatusBadge.classList.remove("bg-success");
+    liveStatusBadge.classList.add("bg-secondary");
+  }
+}
+
+async function startLiveListening() {
+  if (!liveAudio || !liveStartBtn || !liveStopBtn) {
+    return;
+  }
+
+  try {
+    liveStartBtn.disabled = true;
+    liveStopBtn.disabled = false;
+
+    // Add a cache-busting query parameter so each start establishes a fresh stream.
+    const url = `/live/stream?ts=${Date.now()}`;
+    liveAudio.src = url;
+
+    try {
+      await liveAudio.play();
+    } catch (err) {
+      console.error(err);
+      setMessage("Browser blocked auto-play; press play on the audio controls.", "warning");
+    }
+
+    setLiveStatus(true);
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to start live listening", "danger");
+    setLiveStatus(false);
+    liveStartBtn.disabled = false;
+    liveStopBtn.disabled = true;
+  }
+}
+
+function stopLiveListening() {
+  if (!liveAudio || !liveStartBtn || !liveStopBtn) {
+    return;
+  }
+
+  try {
+    liveAudio.pause();
+    liveAudio.removeAttribute("src");
+    liveAudio.load();
+  } catch (err) {
+    console.error(err);
+  }
+
+  setLiveStatus(false);
+  liveStartBtn.disabled = false;
+  liveStopBtn.disabled = true;
+}
+
+function initLiveListening() {
+  liveAudio = document.getElementById("live-audio");
+  liveStartBtn = document.getElementById("start-live-btn");
+  liveStopBtn = document.getElementById("stop-live-btn");
+  liveStatusBadge = document.getElementById("live-status-badge");
+
+  if (!liveAudio || !liveStartBtn || !liveStopBtn || !liveStatusBadge) {
+    return;
+  }
+
+  setLiveStatus(false);
+  liveStartBtn.disabled = false;
+  liveStopBtn.disabled = true;
+
+  liveStartBtn.addEventListener("click", () => {
+    startLiveListening();
+  });
+
+  liveStopBtn.addEventListener("click", () => {
+    stopLiveListening();
+  });
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("start-btn").addEventListener("click", startRecording);
   document.getElementById("stop-btn").addEventListener("click", stopRecording);
+  initLiveListening();
   refreshStatus();
   statusTimer = setInterval(refreshStatus, 5000);
 });

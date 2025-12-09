@@ -66,6 +66,7 @@
   - [x] Display live status (space remaining in minutes, current recording state).
   - [x] Controls: Start/Stop recording, show elapsed time and target max duration.
   - [x] Show recent errors/status messages.
+  - [x] Optional Remote listening card to monitor the Pi microphone in near real time from the browser.
 - [x] Recording page:
   - [x] List recordings with pagination basics.
   - [x] Actions: play (browser audio element using stream URL), rename, delete.
