@@ -6,6 +6,7 @@ const browserProgressEl = document.querySelector("#progress");
 const browserStartButton = document.querySelector("#start-browser-btn");
 const browserPauseButton = document.querySelector("#pause-browser-btn");
 const browserStopButton = document.querySelector("#stop-browser-btn");
+const browserCancelButton = document.querySelector("#cancel-browser-btn");
 const browserMicSelect = document.querySelector("#mic-select");
 const browserStatusBadge = document.querySelector("#browser-status-badge");
 
@@ -84,6 +85,9 @@ function browserCreateWaveSurfer() {
     if (browserStopButton) {
       browserStopButton.disabled = true;
     }
+    if (browserCancelButton) {
+      browserCancelButton.disabled = true;
+    }
     browserUpdateProgress(0);
     browserSetStatus(false);
 
@@ -137,6 +141,9 @@ function browserCreateWaveSurfer() {
   }
   if (browserStopButton) {
     browserStopButton.disabled = true;
+  }
+  if (browserCancelButton) {
+    browserCancelButton.disabled = true;
   }
 }
 
@@ -233,6 +240,9 @@ function browserAttachEventHandlers() {
             if (browserStopButton) {
               browserStopButton.disabled = false;
             }
+            if (browserCancelButton) {
+              browserCancelButton.disabled = false;
+            }
             browserSetStatus(true);
           })
           .catch(() => {
@@ -244,6 +254,9 @@ function browserAttachEventHandlers() {
             }
             if (browserStopButton) {
               browserStopButton.disabled = true;
+            }
+            if (browserCancelButton) {
+              browserCancelButton.disabled = true;
             }
             browserSetStatus(false);
           });
@@ -271,6 +284,37 @@ function browserAttachEventHandlers() {
       if (browserStopButton) {
         browserStopButton.disabled = true;
       }
+      if (browserCancelButton) {
+        browserCancelButton.disabled = true;
+      }
+      browserSetStatus(false);
+    };
+  }
+
+  if (browserCancelButton) {
+    browserCancelButton.onclick = () => {
+      if (!browserRecordPlugin) {
+        return;
+      }
+
+      if (typeof browserRecordPlugin.stopRecording === "function") {
+        browserRecordPlugin.stopRecording();
+      }
+      
+      if (browserStartButton) {
+        browserStartButton.disabled = false;
+      }
+      if (browserPauseButton) {
+        browserPauseButton.disabled = true;
+        browserPauseButton.textContent = "Pause";
+      }
+      if (browserStopButton) {
+        browserStopButton.disabled = true;
+      }
+      if (browserCancelButton) {
+        browserCancelButton.disabled = true;
+      }
+      browserUpdateProgress(0);
       browserSetStatus(false);
     };
   }

@@ -218,15 +218,22 @@ async function refreshStatus() {
     }
 
     const statusBadge = document.getElementById("status-badge");
+    const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
+
     if (statusBadge) {
       if (data.recording_active) {
         statusBadge.textContent = "Recording";
         statusBadge.classList.remove("bg-secondary");
         statusBadge.classList.add("bg-danger");
+        if (startBtn) startBtn.disabled = true;
+        if (stopBtn) stopBtn.disabled = false;
       } else {
         statusBadge.textContent = "Idle";
         statusBadge.classList.remove("bg-danger");
         statusBadge.classList.add("bg-secondary");
+        if (startBtn) startBtn.disabled = false;
+        if (stopBtn) stopBtn.disabled = true;
       }
     }
 
