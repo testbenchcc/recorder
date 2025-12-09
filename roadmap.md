@@ -70,6 +70,8 @@
   - [x] List recordings with pagination basics.
   - [x] Actions: play (browser audio element using stream URL), rename, delete.
   - [x] Show duration, created time, and size.
+  - [x] **Modern card-based layout**: Adaptive grid (1-5 columns) with visual waveforms and VAD segments.
+  - [x] **Enhanced UX**: Click cards to open transcription modal, gradient backgrounds, hover effects.
 - [x] Ensure responsive layout with Bootstrap 5, minimal but clear styling.
 - [x] Output: usable browser UI covering all core flows.
 

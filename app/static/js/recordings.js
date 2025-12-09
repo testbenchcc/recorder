@@ -921,138 +921,175 @@ function appendTranscriptChatMessage(content, segmentIndex, start, end) {
 
 async function loadRecordings() {
   try {
-    const tableWrapper = document.getElementById("recordings-table-wrapper");
-    if (tableWrapper) {
-      tableWrapper.classList.remove("dropdown-open");
-    }
     const res = await fetch("/recordings?limit=200");
     if (!res.ok) {
       setRecordingsMessage("Failed to load recordings", "danger");
       return;
     }
     const data = await res.json();
-    const tbody = document.querySelector("#recordings-table tbody");
-    tbody.innerHTML = "";
+    const grid = document.getElementById("recordings-grid");
+    grid.innerHTML = "";
 
     if (!data.items || data.items.length === 0) {
       document.getElementById("recordings-empty").style.display = "block";
-      document.getElementById("recordings-table").style.display = "none";
       return;
     }
 
     document.getElementById("recordings-empty").style.display = "none";
-    document.getElementById("recordings-table").style.display = "";
 
     for (const item of data.items) {
-      const tr = document.createElement("tr");
-
-      const created = new Date(item.created_at);
-      const createdTd = document.createElement("td");
-      createdTd.textContent = created.toLocaleString();
-
-      const durationTd = document.createElement("td");
-      durationTd.textContent = item.duration_seconds.toFixed(1);
-
-      const sizeTd = document.createElement("td");
-      sizeTd.textContent = (item.size_bytes / 1024).toFixed(1);
-
-      const nameTd = document.createElement("td");
-      nameTd.className = "text-break";
-      const fileName = item.name || item.path.split("/").slice(-1)[0];
-      nameTd.textContent = fileName;
-
-      const actionsTd = document.createElement("td");
-      actionsTd.className = "text-end";
-
-      const dropdownWrapper = document.createElement("div");
-      dropdownWrapper.className = "btn-group";
-
-      const toggleBtn = document.createElement("button");
-      toggleBtn.type = "button";
-      toggleBtn.className =
-        "btn btn-sm btn-outline-secondary dropdown-toggle";
-      toggleBtn.setAttribute("data-bs-toggle", "dropdown");
-      toggleBtn.setAttribute("aria-expanded", "false");
-      toggleBtn.textContent = "Actions";
-
-      const menu = document.createElement("ul");
-      menu.className = "dropdown-menu dropdown-menu-end";
-
-      const playLi = document.createElement("li");
-      const playBtn = document.createElement("button");
-      playBtn.type = "button";
-      playBtn.className = "dropdown-item";
-      playBtn.textContent = "Play";
-      playBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        playRecording(item.id);
-      });
-      playLi.appendChild(playBtn);
-
-      const downloadLi = document.createElement("li");
-      const downloadLink = document.createElement("a");
-      downloadLink.className = "dropdown-item";
-      downloadLink.textContent = "Download";
-      downloadLink.href = `/recordings/${item.id}/stream`;
-      downloadLink.setAttribute("download", fileName);
-      downloadLi.appendChild(downloadLink);
-
-      const transcribeLi = document.createElement("li");
-      const transcribeBtn = document.createElement("button");
-      transcribeBtn.type = "button";
-      transcribeBtn.className = "dropdown-item";
-      transcribeBtn.textContent = "Transcribe";
-      transcribeBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        transcribeRecording(item.id);
-      });
-      transcribeLi.appendChild(transcribeBtn);
-
-      const renameLi = document.createElement("li");
-      const renameBtn = document.createElement("button");
-      renameBtn.type = "button";
-      renameBtn.className = "dropdown-item";
-      renameBtn.textContent = "Rename";
-      renameBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        renameRecording(item.id);
-      });
-      renameLi.appendChild(renameBtn);
-
-      const deleteLi = document.createElement("li");
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.className = "dropdown-item text-danger";
-      deleteBtn.textContent = "Delete";
-      deleteBtn.addEventListener("click", (event) => {
-        event.preventDefault();
-        deleteRecording(item.id);
-      });
-      deleteLi.appendChild(deleteBtn);
-
-      menu.appendChild(playLi);
-      menu.appendChild(downloadLi);
-      menu.appendChild(transcribeLi);
-      menu.appendChild(renameLi);
-      menu.appendChild(deleteLi);
-
-      dropdownWrapper.appendChild(toggleBtn);
-      dropdownWrapper.appendChild(menu);
-
-      actionsTd.appendChild(dropdownWrapper);
-
-      tr.appendChild(createdTd);
-      tr.appendChild(durationTd);
-      tr.appendChild(sizeTd);
-      tr.appendChild(nameTd);
-      tr.appendChild(actionsTd);
-
-      tbody.appendChild(tr);
+      const card = createRecordingCard(item);
+      grid.appendChild(card);
+      
+      loadCardWaveform(item.id, card);
     }
   } catch (err) {
     console.error(err);
     setRecordingsMessage("Error loading recordings", "danger");
   }
+}
+
+function createRecordingCard(item) {
+  const card = document.createElement("div");
+  card.className = "recording-card";
+  card.dataset.recordingId = item.id;
+
+  const fileName = item.name || item.path.split("/").slice(-1)[0];
+  const created = new Date(item.created_at);
+  const durationText = formatDuration(item.duration_seconds);
+  const sizeText = formatFileSize(item.size_bytes);
+
+  card.innerHTML = `
+    <div class="recording-card-header">
+      <div class="recording-card-waveform" id="waveform-${item.id}"></div>
+      <div class="recording-card-title" title="${fileName}">${fileName}</div>
+    </div>
+    <div class="recording-card-body">
+      <div class="recording-info-grid">
+        <div class="recording-info-item">
+          <div class="recording-info-label">Created</div>
+          <div class="recording-info-value">${created.toLocaleDateString()}</div>
+        </div>
+        <div class="recording-info-item">
+          <div class="recording-info-label">Time</div>
+          <div class="recording-info-value">${created.toLocaleTimeString()}</div>
+        </div>
+        <div class="recording-info-item">
+          <div class="recording-info-label">Duration</div>
+          <div class="recording-info-value">${durationText}</div>
+        </div>
+        <div class="recording-info-item">
+          <div class="recording-info-label">Size</div>
+          <div class="recording-info-value">${sizeText}</div>
+        </div>
+      </div>
+      <div class="recording-card-actions">
+        <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); transcribeRecording('${item.id}')">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M2.5 1A1.5 1.5 0 0 0 1 2.5v11A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-11A1.5 1.5 0 0 0 13.5 1h-11zm5 2.5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5zm-3 2a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm6 0a.5.5 0 0 1 .5.5v3a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5z"/>
+          </svg>
+          View
+        </button>
+        <div class="dropdown">
+          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+            </svg>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><button class="dropdown-item" onclick="event.stopPropagation(); playRecording('${item.id}')">Play</button></li>
+            <li><a class="dropdown-item" href="/recordings/${item.id}/stream" download="${fileName}" onclick="event.stopPropagation()">Download</a></li>
+            <li><button class="dropdown-item" onclick="event.stopPropagation(); renameRecording('${item.id}')">Rename</button></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><button class="dropdown-item text-danger" onclick="event.stopPropagation(); deleteRecording('${item.id}')">Delete</button></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  `;
+
+  card.addEventListener("click", () => {
+    transcribeRecording(item.id);
+  });
+
+  return card;
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds < 0) return "0s";
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  if (mins > 0) {
+    return `${mins}m ${secs}s`;
+  }
+  return `${secs}s`;
+}
+
+function formatFileSize(bytes) {
+  if (!bytes || bytes < 0) return "0 KB";
+  const kb = bytes / 1024;
+  if (kb < 1024) {
+    return `${kb.toFixed(1)} KB`;
+  }
+  const mb = kb / 1024;
+  return `${mb.toFixed(2)} MB`;
+}
+
+async function loadCardWaveform(recordingId, cardElement) {
+  const waveformContainer = cardElement.querySelector(`#waveform-${recordingId}`);
+  if (!waveformContainer) return;
+
+  try {
+    const cachedVad = getCachedVadSegments(recordingId);
+    if (cachedVad && cachedVad.length > 0) {
+      renderCardWaveform(waveformContainer, cachedVad);
+      return;
+    }
+
+    const vadRes = await fetch(`/recordings/${recordingId}/vad`);
+    if (vadRes.ok) {
+      const vadData = await vadRes.json();
+      if (vadData.segments && vadData.segments.length > 0) {
+        setCachedVadSegments(recordingId, vadData.segments);
+        renderCardWaveform(waveformContainer, vadData.segments);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load waveform for card", err);
+  }
+}
+
+function renderCardWaveform(container, vadSegments) {
+  if (!container || !vadSegments || vadSegments.length === 0) return;
+
+  const duration = Math.max(...vadSegments.map(s => s.end));
+  if (duration <= 0) return;
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.style.position = "absolute";
+  svg.style.top = "0";
+  svg.style.left = "0";
+
+  vadSegments.forEach(seg => {
+    const startPercent = (seg.start / duration) * 100;
+    const widthPercent = ((seg.end - seg.start) / duration) * 100;
+    
+    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rect.setAttribute("x", startPercent);
+    rect.setAttribute("y", "20");
+    rect.setAttribute("width", widthPercent);
+    rect.setAttribute("height", "60");
+    rect.setAttribute("fill", "rgba(255, 255, 255, 0.4)");
+    rect.setAttribute("rx", "2");
+    
+    svg.appendChild(rect);
+  });
+
+  container.appendChild(svg);
 }
 
 function playRecording(id) {

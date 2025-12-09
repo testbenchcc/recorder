@@ -3,39 +3,31 @@
 {% block title %}Recorder – Recordings{% endblock %}
 
 {% block content %}
-<div class="row">
-  <div class="col-12 mb-3">
-    <div class="card">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Recordings</span>
-        <button class="btn btn-sm btn-outline-secondary" id="refresh-btn">Refresh</button>
-      </div>
-      <div class="card-body">
-        <div id="recordings-empty" class="text-muted">No recordings yet.</div>
-        <div class="table-responsive" id="recordings-table-wrapper">
-          <table class="table table-sm align-middle" id="recordings-table" style="display: none;">
-            <thead>
-              <tr>
-                <th>Created</th>
-                <th>Duration (s)</th>
-                <th>Size (KB)</th>
-                <th>Name</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-        <div id="recordings-messages" class="mt-2"></div>
-      </div>
-    </div>
+<div class="container-fluid px-3 py-3">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Recordings</h4>
+    <button class="btn btn-sm btn-primary" id="refresh-btn">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-clockwise" viewBox="0 0 16 16">
+        <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+        <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+      </svg>
+      Refresh
+    </button>
   </div>
-</div>
-<div class="row mt-3">
-  <div class="col-12">
-    <audio id="player" controls class="w-100" style="display: none;"></audio>
+  
+  <div id="recordings-empty" class="text-center text-muted py-5" style="display: none;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" class="bi bi-mic-mute mb-3" viewBox="0 0 16 16">
+      <path d="M13 8c0 .564-.094 1.107-.266 1.613l-.814-.814A4.02 4.02 0 0 0 12 8V7a.5.5 0 0 1 1 0v1zm-5 4c.818 0 1.578-.245 2.212-.667l.718.719a4.973 4.973 0 0 1-2.43.923V15h3a.5.5 0 0 1 0 1h-7a.5.5 0 0 1 0-1h3v-2.025A5 5 0 0 1 3 8V7a.5.5 0 0 1 1 0v1a4 4 0 0 0 4 4zm3-9v4.879L5.158 2.037A3.001 3.001 0 0 1 11 3z"/>
+      <path d="M9.486 10.607 5 6.12V8a3 3 0 0 0 4.486 2.607zm-7.84-9.253 12 12 .708-.708-12-12-.708.708z"/>
+    </svg>
+    <p class="lead">No recordings yet</p>
   </div>
+  
+  <div id="recordings-grid" class="recordings-grid"></div>
+  <div id="recordings-messages" class="mt-3"></div>
 </div>
+
+<audio id="player" controls class="w-100" style="display: none;"></audio>
 
 <div
   class="modal fade"
@@ -312,16 +304,140 @@
 
 {% block scripts %}
 <style>
-  #recordings-table-wrapper {
+  .recordings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  @media (min-width: 576px) {
+    .recordings-grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+  }
+
+  @media (min-width: 768px) {
+    .recordings-grid {
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+  }
+
+  @media (min-width: 992px) {
+    .recordings-grid {
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    }
+  }
+
+  @media (min-width: 1400px) {
+    .recordings-grid {
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      max-width: calc(340px * 5 + 1.5rem * 4);
+    }
+  }
+
+  .recording-card {
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .recording-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-color: #0d6efd;
+  }
+
+  .recording-card-header {
+    padding: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    height: 80px;
+    overflow: hidden;
+  }
+
+  .recording-card-waveform {
+    width: 100%;
+    height: 100%;
     position: relative;
   }
 
-  #recordings-table-wrapper.dropdown-open {
-    overflow: visible;
+  .recording-card-title {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 10;
   }
 
-  #recordings-table-wrapper .dropdown-menu {
-    z-index: 1060;
+  .recording-card-body {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .recording-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .recording-info-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .recording-info-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: #6c757d;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+  }
+
+  .recording-info-value {
+    font-size: 0.9rem;
+    color: #212529;
+    font-weight: 500;
+  }
+
+  .recording-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+  }
+
+  .recording-card-actions .btn {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .recording-card-actions .dropdown {
+    flex: 0 0 auto;
+  }
+
+  .recording-card-actions .dropdown-toggle {
+    padding: 0.4rem 0.75rem;
   }
 
   #transcript-modal .transcript-layout {

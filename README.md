@@ -119,6 +119,15 @@ chmod +x run.sh
 
 Once the app is running, open the web UI (for example, `http://recorder:8080`). On the Home page you can use the **Browser recorder** card to capture short test clips directly in the browser using the device microphone. Finished clips are uploaded to the server, converted to WAV (using `ffmpeg`) with the same layout as ALSA-based recordings, and will appear on the **Recordings** page like any other file.
 
+## Recordings Page
+
+The **Recordings** page features a modern, adaptive card-based layout:
+- **Responsive Grid**: Automatically adjusts from 1 to 5 columns based on screen width
+- **Visual Timeline**: Each card displays a mini audio waveform with VAD (Voice Activity Detection) segments in the header
+- **Color-Coded Cards**: Beautiful gradient backgrounds with hover effects
+- **Quick Actions**: Click any card to open the transcription modal, or use the action buttons for Play, Download, Rename, and Delete
+- **Organized Info**: Recording details (date, time, duration, size) displayed in a clean grid layout
+
 > **Tip:** The transcription modal now intelligently caches data:
 > - **Opening the modal**: Loads cached transcriptions and VAD segments when available, avoiding unnecessary API calls
 > - **Resend button**: Re-runs transcription while preserving the waveform visualization and timeline annotations
