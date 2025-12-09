@@ -21,6 +21,7 @@ let transcriptRegionsPlugin = null;
 let transcriptSegments = [];
 let transcriptSkipSilenceMode = false;
 let transcriptWaveTimeupdateUnsub = null;
+let transcriptActiveRegionId = null;
 
 // In-memory cache of audio blobs for the current browser session.
 // This avoids re-downloading audio when you reopen a transcript.
@@ -202,6 +203,22 @@ function ensureTranscriptWaveformStructure() {
   };
 }
 
+function setActiveTranscriptRegion(regionId) {
+  transcriptActiveRegionId = regionId || null;
+  if (!transcriptWaveformTimelineEl) return;
+  const blocks = transcriptWaveformTimelineEl.querySelectorAll(
+    ".transcript-waveform-segment",
+  );
+  blocks.forEach((block) => {
+    const matches =
+      regionId &&
+      block &&
+      block.dataset &&
+      block.dataset.regionId === regionId;
+    block.classList.toggle("active", !!matches);
+  });
+}
+
 function renderTranscriptTimelineSegments() {
   if (
     !transcriptWaveformTimelineEl ||
@@ -211,6 +228,7 @@ function renderTranscriptTimelineSegments() {
     if (transcriptWaveformTimelineEl) {
       transcriptWaveformTimelineEl.innerHTML = "";
     }
+    setActiveTranscriptRegion(null);
     return;
   }
 
@@ -246,6 +264,8 @@ function renderTranscriptTimelineSegments() {
     const topPct = (start / totalDuration) * 100;
     const heightPct = (span / totalDuration) * 100;
     const color = regionColors[idx % regionColors.length];
+    const regionId =
+      seg && typeof seg.index === "number" ? `seg-${seg.index}` : null;
 
     const block = document.createElement("div");
     block.className = "transcript-waveform-segment";
@@ -256,6 +276,9 @@ function renderTranscriptTimelineSegments() {
     block.style.height = `${Math.max(0.5, heightPct)}%`;
     block.style.backgroundColor = color;
     block.style.cursor = "pointer";
+    if (regionId) {
+      block.dataset.regionId = regionId;
+    }
 
     block.title = `${formatTranscriptTimeLabel(start)} - ${formatTranscriptTimeLabel(
       end,
@@ -264,12 +287,17 @@ function renderTranscriptTimelineSegments() {
     block.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (regionId) {
+        setActiveTranscriptRegion(regionId);
+      }
       if (!transcriptWavesurfer) return;
       transcriptWavesurfer.play(start, end).catch(() => {});
     });
 
     timelineEl.appendChild(block);
   });
+
+  setActiveTranscriptRegion(transcriptActiveRegionId);
 }
 
 function getSelectedTranscriptFormat() {
@@ -364,6 +392,7 @@ function destroyTranscriptWaveform() {
   const waveformEl = document.getElementById("transcript-waveform");
 
   transcriptSkipSilenceMode = false;
+  setActiveTranscriptRegion(null);
 
   if (transcriptWavesurfer && typeof transcriptWavesurfer.destroy === "function") {
     transcriptWavesurfer.destroy();
@@ -372,6 +401,7 @@ function destroyTranscriptWaveform() {
   transcriptSegments = [];
   transcriptWaveformTimelineEl = null;
   transcriptRegionsPlugin = null;
+  transcriptActiveRegionId = null;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
@@ -448,7 +478,7 @@ function initTranscriptWaveform(recordingId, segments) {
       }
 
       if (regions && typeof regions.on === "function") {
-        regions.on("region-clicked", (region, event) => {
+        const handleRegionClick = (region, event) => {
           if (!region || !transcriptWavesurfer) return;
           if (event && typeof event.preventDefault === "function") {
             event.preventDefault();
@@ -456,9 +486,29 @@ function initTranscriptWaveform(recordingId, segments) {
           if (event && typeof event.stopPropagation === "function") {
             event.stopPropagation();
           }
+          if (region.id) {
+            setActiveTranscriptRegion(region.id);
+          }
           const { start, end } = region;
           transcriptWavesurfer.play(start, end).catch(() => {});
-        });
+        };
+
+        const handleRegionEnter = (region) => {
+          if (!region) return;
+          setActiveTranscriptRegion(region.id || null);
+        };
+
+        const handleRegionLeave = (region) => {
+          if (!region || !region.id) return;
+          if (transcriptActiveRegionId === region.id) {
+            setActiveTranscriptRegion(null);
+          }
+        };
+
+        regions.on("region-clicked", handleRegionClick);
+        regions.on("region-click", handleRegionClick);
+        regions.on("region-in", handleRegionEnter);
+        regions.on("region-out", handleRegionLeave);
       }
 
       syncTranscriptRegionsFromSegments();
