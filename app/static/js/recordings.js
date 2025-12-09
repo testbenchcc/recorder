@@ -164,6 +164,25 @@ function normalizeTranscriptSegments(rawSegments) {
     .filter(Boolean);
 }
 
+function formatTranscriptTimeLabel(value) {
+  if (!Number.isFinite(value) || value < 0) return "0:00";
+  const totalSeconds = Math.floor(value);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getTranscriptSegmentLabel(seg, idx) {
+  const base =
+    seg && typeof seg.content === "string" && seg.content.trim()
+      ? seg.content.trim()
+      : "";
+  if (base) {
+    return base.length > 48 ? `${base.slice(0, 45)}…` : base;
+  }
+  return `Segment ${idx + 1}`;
+}
+
 function ensureTranscriptWaveformStructure() {
   const outerEl = document.getElementById("transcript-waveform");
   if (!outerEl) {
@@ -177,11 +196,20 @@ function ensureTranscriptWaveformStructure() {
     outerEl.appendChild(innerEl);
   }
 
+  let timelineEl = document.getElementById("transcript-waveform-timeline");
+  if (!timelineEl) {
+    timelineEl = document.createElement("div");
+    timelineEl.id = "transcript-waveform-timeline";
+    timelineEl.className = "transcript-waveform-timeline";
+    outerEl.appendChild(timelineEl);
+  }
+  transcriptWaveformTimelineEl = timelineEl;
+
   resizeTranscriptWaveformVertical();
 
   return {
     container: innerEl,
-    timelineEl: transcriptWaveformTimelineEl,
+    timelineEl,
   };
 }
 
@@ -239,6 +267,17 @@ function renderTranscriptTimelineSegments() {
     block.style.height = `${Math.max(0.5, heightPct)}%`;
     block.style.backgroundColor = color;
     block.style.cursor = "pointer";
+
+    const labelText = getTranscriptSegmentLabel(seg, idx);
+    block.title = `${formatTranscriptTimeLabel(start)} - ${formatTranscriptTimeLabel(
+      end,
+    )}${labelText ? `: ${labelText}` : ""}`;
+    if (labelText) {
+      const label = document.createElement("div");
+      label.className = "transcript-waveform-segment-label";
+      label.textContent = labelText;
+      block.appendChild(label);
+    }
 
     block.addEventListener("click", (event) => {
       event.preventDefault();
