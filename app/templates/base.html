@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-webtui-theme="catppuccin">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -23,6 +23,24 @@
         --purple-end: #f39237;
         --card-bg: #270722;
         --input-bg: #43281c;
+        /* Catppuccin-style base tokens mapped onto our palette */
+        --base: var(--bg-primary);
+        --surface0: var(--card-bg);
+        --surface1: var(--input-bg);
+        --surface2: var(--bg-tertiary);
+        --text: var(--text-primary);
+        --subtext1: var(--text-secondary);
+        --overlay2: var(--text-muted);
+      }
+
+      [data-webtui-theme|=catppuccin] {
+        --background0: var(--base);
+        --background1: var(--surface0);
+        --background2: var(--surface1);
+        --background3: var(--surface2);
+        --foreground0: var(--text);
+        --foreground1: var(--subtext1);
+        --foreground2: var(--overlay2);
       }
 
       body {
