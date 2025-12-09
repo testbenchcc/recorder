@@ -109,9 +109,6 @@ function resetTranscriptProgressUI() {
 }
 
 function destroyTranscriptWaveform() {
-  const container = document.getElementById(
-    "transcript-waveform-container",
-  );
   const waveformEl = document.getElementById("transcript-waveform");
 
   if (transcriptWavesurfer && typeof transcriptWavesurfer.destroy === "function") {
@@ -124,18 +121,12 @@ function destroyTranscriptWaveform() {
   if (waveformEl) {
     waveformEl.innerHTML = "";
   }
-  if (container) {
-    container.style.display = "none";
-  }
 }
 
 function initTranscriptWaveform(recordingId, segments) {
-  const container = document.getElementById(
-    "transcript-waveform-container",
-  );
   const waveformEl = document.getElementById("transcript-waveform");
 
-  if (!container || !waveformEl) {
+  if (!waveformEl) {
     return;
   }
 
@@ -143,35 +134,36 @@ function initTranscriptWaveform(recordingId, segments) {
     return;
   }
 
-  if (!Array.isArray(segments) || !segments.length) {
-    destroyTranscriptWaveform();
-    return;
+  // Normalize segments into our internal representation (may be empty).
+  if (Array.isArray(segments)) {
+    transcriptSegments = segments
+      .map((seg, index) => {
+        if (!seg || typeof seg.start !== "number" || typeof seg.end !== "number") {
+          return null;
+        }
+        return {
+          index,
+          start: seg.start,
+          end: seg.end,
+          content:
+            (seg.content && String(seg.content)) ||
+            "",
+        };
+      })
+      .filter(Boolean);
+  } else {
+    transcriptSegments = [];
   }
 
-  destroyTranscriptWaveform();
-
-  transcriptSegments = segments
-    .map((seg, index) => {
-      if (!seg || typeof seg.start !== "number" || typeof seg.end !== "number") {
-        return null;
-      }
-      return {
-        index,
-        start: seg.start,
-        end: seg.end,
-        content:
-          (seg.content && String(seg.content)) ||
-          "",
-      };
-    })
-    .filter(Boolean);
-
-  if (!transcriptSegments.length) {
-    destroyTranscriptWaveform();
-    return;
+  // Reset any existing waveform instance but keep the container visible.
+  if (transcriptWavesurfer && typeof transcriptWavesurfer.destroy === "function") {
+    transcriptWavesurfer.destroy();
   }
-
-  container.style.display = "";
+  transcriptWavesurfer = null;
+  transcriptRegionsPlugin = null;
+  if (waveformEl) {
+    waveformEl.innerHTML = "";
+  }
 
   transcriptWavesurfer = WaveSurfer.create({
     container: waveformEl,
@@ -201,13 +193,34 @@ function initTranscriptWaveform(recordingId, segments) {
   }
 
   const addRegions = () => {
-    if (!transcriptRegionsPlugin || !transcriptWavesurfer) return;
+    if (
+      !transcriptRegionsPlugin ||
+      !transcriptWavesurfer ||
+      !Array.isArray(transcriptSegments) ||
+      !transcriptSegments.length
+    ) {
+      return;
+    }
 
-    transcriptSegments.forEach((seg) => {
+    if (typeof transcriptRegionsPlugin.clearRegions === "function") {
+      transcriptRegionsPlugin.clearRegions();
+    }
+
+    const regionColors = [
+      "rgba(13, 110, 253, 0.35)", // blue
+      "rgba(25, 135, 84, 0.35)", // green
+      "rgba(220, 53, 69, 0.35)", // red
+      "rgba(255, 193, 7, 0.35)", // yellow
+      "rgba(111, 66, 193, 0.35)", // purple
+    ];
+
+    transcriptSegments.forEach((seg, idx) => {
       const label =
         seg.content && seg.content.trim()
           ? seg.content.trim()
           : `Segment ${seg.index + 1} (${seg.start.toFixed(1)}s – ${seg.end.toFixed(1)}s)`;
+
+      const color = regionColors[idx % regionColors.length];
 
       transcriptRegionsPlugin.addRegion({
         id: `segment-${seg.index}`,
@@ -215,7 +228,7 @@ function initTranscriptWaveform(recordingId, segments) {
         end: seg.end,
         drag: false,
         resize: false,
-        color: "rgba(13, 110, 253, 0.3)",
+        color,
         content: label,
       });
     });
@@ -530,11 +543,7 @@ async function loadCachedTranscription(id, normalizedFormat) {
         const text = (data.content || "").replace(/\s+/g, " ").trim();
         contentEl.textContent = text || "[Empty transcription response]";
       }
-      if (segments.length) {
-        initTranscriptWaveform(id, segments);
-      } else {
-        destroyTranscriptWaveform();
-      }
+      initTranscriptWaveform(id, segments);
     } else if (contentEl) {
       if (chatEl) {
         chatEl.style.display = "none";
@@ -565,7 +574,6 @@ async function transcribeRecordingVadSequential(id) {
 
   resetTranscriptProgressUI();
   resetTranscriptChat();
-  destroyTranscriptWaveform();
   contentEl.style.display = "none";
   contentEl.textContent = "";
 
@@ -753,6 +761,7 @@ async function transcribeRecording(id, overrideFormat, forceFresh) {
   resetTranscriptProgressUI();
   resetTranscriptChat();
   destroyTranscriptWaveform();
+  initTranscriptWaveform(id);
   contentEl.style.display = "none";
   contentEl.textContent = "";
 
