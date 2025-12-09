@@ -17,10 +17,196 @@ let transcriptTotalSegments = 0;
 let transcriptCompletedSegments = 0;
 let transcriptAbortRequested = false;
 let transcriptWavesurfer = null;
-let transcriptRegionsPlugin = null;
 let transcriptSegments = [];
 let transcriptSkipSilenceMode = false;
 let transcriptWaveTimeupdateUnsub = null;
+
+// In-memory cache of audio blobs for the current browser session.
+// This avoids re-downloading audio when you reopen a transcript.
+const transcriptAudioUrlCache = new Map();
+const transcriptAudioUrlPromises = new Map();
+
+// Elements used for drawing the waveform and overlaying segment blocks.
+let transcriptWaveformTimelineEl = null;
+let transcriptWaveformCanvasEl = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeunload", () => {
+    for (const url of transcriptAudioUrlCache.values()) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Failed to revoke audio object URL", err);
+      }
+    }
+    transcriptAudioUrlCache.clear();
+    transcriptAudioUrlPromises.clear();
+  });
+}
+
+function getTranscriptAudioStreamUrl(recordingId) {
+  return `/recordings/${recordingId}/stream`;
+}
+
+async function ensureTranscriptAudioUrl(recordingId) {
+  if (transcriptAudioUrlCache.has(recordingId)) {
+    return transcriptAudioUrlCache.get(recordingId);
+  }
+
+  if (transcriptAudioUrlPromises.has(recordingId)) {
+    return transcriptAudioUrlPromises.get(recordingId);
+  }
+
+  const streamUrl = getTranscriptAudioStreamUrl(recordingId);
+
+  const promise = (async () => {
+    try {
+      const res = await fetch(streamUrl);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch audio stream (${res.status})`);
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      transcriptAudioUrlCache.set(recordingId, objectUrl);
+      return objectUrl;
+    } finally {
+      transcriptAudioUrlPromises.delete(recordingId);
+    }
+  })();
+
+  transcriptAudioUrlPromises.set(recordingId, promise);
+  return promise;
+}
+
+function normalizeTranscriptSegments(rawSegments) {
+  if (!Array.isArray(rawSegments)) {
+    return [];
+  }
+  return rawSegments
+    .map((seg, index) => {
+      if (!seg || typeof seg.start !== "number" || typeof seg.end !== "number") {
+        return null;
+      }
+      return {
+        index,
+        start: seg.start,
+        end: seg.end,
+        content:
+          (seg.content && String(seg.content)) ||
+          "",
+      };
+    })
+    .filter(Boolean);
+}
+
+function ensureTranscriptWaveformStructure() {
+  const waveformEl = document.getElementById("transcript-waveform");
+  if (!waveformEl) {
+    return null;
+  }
+
+  // Make the outer container a positioned box so we can stack layers.
+  if (!waveformEl.style.position) {
+    waveformEl.style.position = "relative";
+  }
+
+  if (!transcriptWaveformTimelineEl) {
+    transcriptWaveformTimelineEl = document.createElement("div");
+    transcriptWaveformTimelineEl.className = "transcript-waveform-timeline";
+    transcriptWaveformTimelineEl.style.position = "absolute";
+    transcriptWaveformTimelineEl.style.top = "0";
+    transcriptWaveformTimelineEl.style.left = "0";
+    transcriptWaveformTimelineEl.style.right = "0";
+    transcriptWaveformTimelineEl.style.bottom = "0";
+    transcriptWaveformTimelineEl.style.pointerEvents = "auto";
+    transcriptWaveformTimelineEl.style.zIndex = "2";
+    waveformEl.appendChild(transcriptWaveformTimelineEl);
+  }
+
+  if (!transcriptWaveformCanvasEl) {
+    transcriptWaveformCanvasEl = document.createElement("div");
+    transcriptWaveformCanvasEl.className = "transcript-waveform-canvas";
+    transcriptWaveformCanvasEl.style.position = "absolute";
+    transcriptWaveformCanvasEl.style.top = "0";
+    transcriptWaveformCanvasEl.style.left = "0";
+    transcriptWaveformCanvasEl.style.right = "0";
+    transcriptWaveformCanvasEl.style.bottom = "0";
+    transcriptWaveformCanvasEl.style.zIndex = "1";
+    waveformEl.appendChild(transcriptWaveformCanvasEl);
+  }
+
+  return {
+    container: waveformEl,
+    timelineEl: transcriptWaveformTimelineEl,
+    canvasEl: transcriptWaveformCanvasEl,
+  };
+}
+
+function renderTranscriptTimelineSegments() {
+  if (
+    !transcriptWaveformTimelineEl ||
+    !Array.isArray(transcriptSegments) ||
+    !transcriptSegments.length
+  ) {
+    if (transcriptWaveformTimelineEl) {
+      transcriptWaveformTimelineEl.innerHTML = "";
+    }
+    return;
+  }
+
+  const timelineEl = transcriptWaveformTimelineEl;
+  timelineEl.innerHTML = "";
+
+  const lastSeg = transcriptSegments[transcriptSegments.length - 1];
+  const totalDuration = lastSeg && typeof lastSeg.end === "number" && lastSeg.end > 0
+    ? lastSeg.end
+    : null;
+
+  if (!totalDuration) {
+    return;
+  }
+
+  const regionColors = [
+    "rgba(13, 110, 253, 0.35)", // blue
+    "rgba(25, 135, 84, 0.35)", // green
+    "rgba(220, 53, 69, 0.35)", // red
+    "rgba(255, 193, 7, 0.35)", // yellow
+    "rgba(111, 66, 193, 0.35)", // purple
+  ];
+
+  transcriptSegments.forEach((seg, idx) => {
+    if (!seg) return;
+    const start = Math.max(0, seg.start);
+    const end = Math.max(start, seg.end);
+    const span = end - start;
+    if (!span || !Number.isFinite(span)) {
+      return;
+    }
+
+    const leftPct = (start / totalDuration) * 100;
+    const widthPct = (span / totalDuration) * 100;
+    const color = regionColors[idx % regionColors.length];
+
+    const block = document.createElement("div");
+    block.className = "transcript-waveform-segment";
+    block.style.position = "absolute";
+    block.style.top = "0";
+    block.style.bottom = "0";
+    block.style.left = `${leftPct}%`;
+    block.style.width = `${Math.max(0.5, widthPct)}%`;
+    block.style.backgroundColor = color;
+    block.style.cursor = "pointer";
+
+    block.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!transcriptWavesurfer) return;
+      transcriptWavesurfer.play(start, end).catch(() => {});
+    });
+
+    timelineEl.appendChild(block);
+  });
+}
 
 function getSelectedTranscriptFormat() {
   const select = document.getElementById("transcript-format");
@@ -119,8 +305,9 @@ function destroyTranscriptWaveform() {
     transcriptWavesurfer.destroy();
   }
   transcriptWavesurfer = null;
-  transcriptRegionsPlugin = null;
   transcriptSegments = [];
+  transcriptWaveformTimelineEl = null;
+  transcriptWaveformCanvasEl = null;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
@@ -133,177 +320,101 @@ function destroyTranscriptWaveform() {
 }
 
 function initTranscriptWaveform(recordingId, segments) {
-  const waveformEl = document.getElementById("transcript-waveform");
-
-  if (!waveformEl) {
-    return;
-  }
-
   if (typeof WaveSurfer === "undefined" || !WaveSurfer) {
     return;
   }
 
-  // Normalize segments into our internal representation (may be empty).
-  if (Array.isArray(segments)) {
-    transcriptSegments = segments
-      .map((seg, index) => {
-        if (!seg || typeof seg.start !== "number" || typeof seg.end !== "number") {
-          return null;
-        }
-        return {
-          index,
-          start: seg.start,
-          end: seg.end,
-          content:
-            (seg.content && String(seg.content)) ||
-            "",
-        };
-      })
-      .filter(Boolean);
-  } else {
-    transcriptSegments = [];
+  const structure = ensureTranscriptWaveformStructure();
+  if (!structure) {
+    return;
   }
+
+  // Normalize segments into our internal representation (may be empty).
+  transcriptSegments = normalizeTranscriptSegments(segments);
+  renderTranscriptTimelineSegments();
 
   // Reset any existing waveform instance but keep the container visible.
   if (transcriptWavesurfer && typeof transcriptWavesurfer.destroy === "function") {
     transcriptWavesurfer.destroy();
   }
   transcriptWavesurfer = null;
-  transcriptRegionsPlugin = null;
-  if (waveformEl) {
-    waveformEl.innerHTML = "";
-  }
-
-  transcriptWavesurfer = WaveSurfer.create({
-    container: waveformEl,
-    waveColor: "rgba(0, 0, 0, 0.25)",
-    progressColor: "#0d6efd",
-    cursorColor: "#0d6efd",
-    height: 80,
-    responsive: true,
-    url: `/recordings/${recordingId}/stream`,
-  });
-
-  if (
-    WaveSurfer.Regions &&
-    typeof WaveSurfer.Regions.create === "function" &&
-    transcriptWavesurfer &&
-    typeof transcriptWavesurfer.registerPlugin === "function"
-  ) {
-    transcriptRegionsPlugin = transcriptWavesurfer.registerPlugin(
-      WaveSurfer.Regions.create(),
-    );
-  } else {
-    transcriptRegionsPlugin = null;
-  }
-
-  if (!transcriptRegionsPlugin) {
-    return;
-  }
-
-  const addRegions = () => {
-    if (
-      !transcriptRegionsPlugin ||
-      !transcriptWavesurfer ||
-      !Array.isArray(transcriptSegments) ||
-      !transcriptSegments.length
-    ) {
-      return;
-    }
-
-    if (typeof transcriptRegionsPlugin.clearRegions === "function") {
-      transcriptRegionsPlugin.clearRegions();
-    }
-
-    const regionColors = [
-      "rgba(13, 110, 253, 0.35)", // blue
-      "rgba(25, 135, 84, 0.35)", // green
-      "rgba(220, 53, 69, 0.35)", // red
-      "rgba(255, 193, 7, 0.35)", // yellow
-      "rgba(111, 66, 193, 0.35)", // purple
-    ];
-
-    transcriptSegments.forEach((seg, idx) => {
-      const color = regionColors[idx % regionColors.length];
-
-      transcriptRegionsPlugin.addRegion({
-        id: `segment-${seg.index}`,
-        start: seg.start,
-        end: seg.end,
-        drag: false,
-        resize: false,
-        color,
-      });
-    });
-
-    transcriptRegionsPlugin.on("region-clicked", (region, event) => {
-      if (!region || !transcriptWavesurfer) return;
-      if (event && typeof event.stopPropagation === "function") {
-        event.stopPropagation();
-      }
-      transcriptWavesurfer.play(region.start, region.end);
-    });
-  };
-
-  const ws = transcriptWavesurfer;
-  if (ws && typeof ws.getDuration === "function" && ws.getDuration() > 0) {
-    addRegions();
-  } else if (ws && typeof ws.once === "function") {
-    ws.once("ready", addRegions);
-  } else if (ws && typeof ws.on === "function") {
-    ws.on("ready", addRegions);
-  } else {
-    window.setTimeout(addRegions, 500);
-  }
+  const { canvasEl } = structure;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
     transcriptWaveTimeupdateUnsub = null;
   }
+  const wsOwnerId = recordingId;
 
-  if (ws && typeof ws.on === "function") {
-    transcriptWaveTimeupdateUnsub = ws.on(
-      "timeupdate",
-      (currentTime) => {
-        if (
-          !transcriptSkipSilenceMode ||
-          !Array.isArray(transcriptSegments) ||
-          !transcriptSegments.length
-        ) {
-          return;
-        }
+  ensureTranscriptAudioUrl(recordingId)
+    .then((audioUrl) => {
+      // If the user has switched recordings while this was loading,
+      // do not attach a new waveform instance.
+      if (currentTranscriptRecordingId && currentTranscriptRecordingId !== wsOwnerId) {
+        return;
+      }
 
-        const t = currentTime;
-        const margin = 0.05;
-        const lastSeg = transcriptSegments[transcriptSegments.length - 1];
+      transcriptWavesurfer = WaveSurfer.create({
+        container: canvasEl,
+        waveColor: "rgba(0, 0, 0, 0.25)",
+        progressColor: "#0d6efd",
+        cursorColor: "#0d6efd",
+        height: 80,
+        responsive: true,
+        url: audioUrl || getTranscriptAudioStreamUrl(recordingId),
+      });
 
-        if (!lastSeg) {
-          transcriptSkipSilenceMode = false;
-          return;
-        }
+      const ws = transcriptWavesurfer;
+      if (!ws || typeof ws.on !== "function") {
+        return;
+      }
 
-        if (t > lastSeg.end + margin) {
-          transcriptSkipSilenceMode = false;
-          ws.pause();
-          return;
-        }
-
-        for (let i = 0; i < transcriptSegments.length; i += 1) {
-          const seg = transcriptSegments[i];
-          if (!seg) continue;
-
-          if (t >= seg.start - margin && t <= seg.end + margin) {
+      // Update skip-silence playback when the audio is ready and during playback.
+      transcriptWaveTimeupdateUnsub = ws.on(
+        "timeupdate",
+        (currentTime) => {
+          if (
+            !transcriptSkipSilenceMode ||
+            !Array.isArray(transcriptSegments) ||
+            !transcriptSegments.length
+          ) {
             return;
           }
 
-          if (t < seg.start - margin) {
-            ws.setTime(seg.start);
+          const t = currentTime;
+          const margin = 0.05;
+          const lastSeg = transcriptSegments[transcriptSegments.length - 1];
+
+          if (!lastSeg) {
+            transcriptSkipSilenceMode = false;
             return;
           }
-        }
-      },
-    );
-  }
+
+          if (t > lastSeg.end + margin) {
+            transcriptSkipSilenceMode = false;
+            ws.pause();
+            return;
+          }
+
+          for (let i = 0; i < transcriptSegments.length; i += 1) {
+            const seg = transcriptSegments[i];
+            if (!seg) continue;
+
+            if (t >= seg.start - margin && t <= seg.end + margin) {
+              return;
+            }
+
+            if (t < seg.start - margin) {
+              ws.setTime(seg.start);
+              return;
+            }
+          }
+        },
+      );
+    })
+    .catch((err) => {
+      console.error("Failed to initialize transcript waveform", err);
+    });
 }
 
 function playTranscriptAll() {
