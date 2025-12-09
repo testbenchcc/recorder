@@ -19,6 +19,8 @@ let transcriptAbortRequested = false;
 let transcriptWavesurfer = null;
 let transcriptRegionsPlugin = null;
 let transcriptSegments = [];
+let transcriptSkipSilenceMode = false;
+let transcriptWaveTimeupdateUnsub = null;
 
 function getSelectedTranscriptFormat() {
   const select = document.getElementById("transcript-format");
@@ -111,12 +113,19 @@ function resetTranscriptProgressUI() {
 function destroyTranscriptWaveform() {
   const waveformEl = document.getElementById("transcript-waveform");
 
+  transcriptSkipSilenceMode = false;
+
   if (transcriptWavesurfer && typeof transcriptWavesurfer.destroy === "function") {
     transcriptWavesurfer.destroy();
   }
   transcriptWavesurfer = null;
   transcriptRegionsPlugin = null;
   transcriptSegments = [];
+
+  if (typeof transcriptWaveTimeupdateUnsub === "function") {
+    transcriptWaveTimeupdateUnsub();
+    transcriptWaveTimeupdateUnsub = null;
+  }
 
   if (waveformEl) {
     waveformEl.innerHTML = "";
@@ -251,6 +260,104 @@ function initTranscriptWaveform(recordingId, segments) {
     ws.on("ready", addRegions);
   } else {
     window.setTimeout(addRegions, 500);
+  }
+
+  if (typeof transcriptWaveTimeupdateUnsub === "function") {
+    transcriptWaveTimeupdateUnsub();
+    transcriptWaveTimeupdateUnsub = null;
+  }
+
+  if (ws && typeof ws.on === "function") {
+    transcriptWaveTimeupdateUnsub = ws.on(
+      "timeupdate",
+      (currentTime) => {
+        if (
+          !transcriptSkipSilenceMode ||
+          !Array.isArray(transcriptSegments) ||
+          !transcriptSegments.length
+        ) {
+          return;
+        }
+
+        const t = currentTime;
+        const margin = 0.05;
+        const lastSeg = transcriptSegments[transcriptSegments.length - 1];
+
+        if (!lastSeg) {
+          transcriptSkipSilenceMode = false;
+          return;
+        }
+
+        if (t > lastSeg.end + margin) {
+          transcriptSkipSilenceMode = false;
+          ws.pause();
+          return;
+        }
+
+        for (let i = 0; i < transcriptSegments.length; i += 1) {
+          const seg = transcriptSegments[i];
+          if (!seg) continue;
+
+          if (t >= seg.start - margin && t <= seg.end + margin) {
+            return;
+          }
+
+          if (t < seg.start - margin) {
+            ws.setTime(seg.start);
+            return;
+          }
+        }
+      },
+    );
+  }
+}
+
+function playTranscriptAll() {
+  if (!transcriptWavesurfer) return;
+  transcriptSkipSilenceMode = false;
+  if (typeof transcriptWavesurfer.setTime === "function") {
+    transcriptWavesurfer.setTime(0);
+  }
+  transcriptWavesurfer.play().catch(() => {});
+}
+
+function playTranscriptWithoutSilence() {
+  if (!transcriptWavesurfer) return;
+  if (!Array.isArray(transcriptSegments) || !transcriptSegments.length) {
+    playTranscriptAll();
+    return;
+  }
+  transcriptSkipSilenceMode = true;
+  const first = transcriptSegments[0];
+  if (first && typeof first.start === "number") {
+    transcriptWavesurfer.setTime(first.start);
+  }
+  transcriptWavesurfer.play().catch(() => {});
+}
+
+function pauseTranscriptAudio() {
+  if (!transcriptWavesurfer) return;
+  transcriptWavesurfer.pause();
+}
+
+function stopTranscriptAudio() {
+  if (!transcriptWavesurfer) return;
+  transcriptSkipSilenceMode = false;
+  if (typeof transcriptWavesurfer.stop === "function") {
+    transcriptWavesurfer.stop();
+  } else if (typeof transcriptWavesurfer.setTime === "function") {
+    transcriptWavesurfer.setTime(0);
+    transcriptWavesurfer.pause();
+  }
+}
+
+function skipTranscriptAudio(seconds) {
+  if (!transcriptWavesurfer) return;
+  if (typeof transcriptWavesurfer.skip === "function") {
+    transcriptWavesurfer.skip(seconds);
+  } else if (typeof transcriptWavesurfer.setTime === "function" && typeof transcriptWavesurfer.getCurrentTime === "function") {
+    const current = transcriptWavesurfer.getCurrentTime();
+    transcriptWavesurfer.setTime(Math.max(0, current + seconds));
   }
 }
 
@@ -952,6 +1059,78 @@ window.addEventListener("DOMContentLoaded", () => {
       .catch((err) => {
         console.error("Failed to load UI config for transcript format", err);
       });
+  }
+  const playAllBtn = document.getElementById("transcript-audio-play-all");
+  if (playAllBtn) {
+    playAllBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      playTranscriptAll();
+    });
+  }
+  const playNoSilenceBtn = document.getElementById(
+    "transcript-audio-play-nosilence",
+  );
+  if (playNoSilenceBtn) {
+    playNoSilenceBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      playTranscriptWithoutSilence();
+    });
+  }
+  const pauseBtn = document.getElementById("transcript-audio-pause");
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      pauseTranscriptAudio();
+    });
+  }
+  const stopAudioBtn = document.getElementById("transcript-audio-stop");
+  if (stopAudioBtn) {
+    stopAudioBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      stopTranscriptAudio();
+    });
+  }
+  const back5Btn = document.getElementById("transcript-audio-back-5");
+  if (back5Btn) {
+    back5Btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      skipTranscriptAudio(-5);
+    });
+  }
+  const back10Btn = document.getElementById("transcript-audio-back-10");
+  if (back10Btn) {
+    back10Btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      skipTranscriptAudio(-10);
+    });
+  }
+  const forward5Btn = document.getElementById("transcript-audio-forward-5");
+  if (forward5Btn) {
+    forward5Btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      skipTranscriptAudio(5);
+    });
+  }
+  const forward10Btn = document.getElementById("transcript-audio-forward-10");
+  if (forward10Btn) {
+    forward10Btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      skipTranscriptAudio(10);
+    });
+  }
+  const speedSelect = document.getElementById("transcript-audio-speed");
+  if (speedSelect) {
+    speedSelect.addEventListener("change", () => {
+      if (!transcriptWavesurfer) return;
+      const raw = speedSelect.value;
+      const rate = Number.parseFloat(raw);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        return;
+      }
+      if (typeof transcriptWavesurfer.setPlaybackRate === "function") {
+        transcriptWavesurfer.setPlaybackRate(rate, true);
+      }
+    });
   }
   loadRecordings();
 });

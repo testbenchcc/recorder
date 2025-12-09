@@ -188,6 +188,89 @@
             class="border rounded"
             style="width: 100%; min-height: 80px; background: #f8f9fa;"
           ></div>
+          <div
+            id="transcript-audio-controls"
+            class="mt-2 d-flex flex-wrap align-items-center gap-2"
+          >
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary"
+              id="transcript-audio-play-all"
+            >
+              Play all
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary"
+              id="transcript-audio-play-nosilence"
+            >
+              Play without silence
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="transcript-audio-pause"
+            >
+              Pause
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="transcript-audio-stop"
+            >
+              Stop
+            </button>
+            <div
+              class="vr d-none d-md-block"
+              style="height: 24px;"
+            ></div>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="transcript-audio-back-10"
+            >
+              -10s
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="transcript-audio-back-5"
+            >
+              -5s
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="transcript-audio-forward-5"
+            >
+              +5s
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              id="transcript-audio-forward-10"
+            >
+              +10s
+            </button>
+            <div class="ms-auto d-flex align-items-center gap-1">
+              <label
+                for="transcript-audio-speed"
+                class="small mb-0"
+              >
+                Speed
+              </label>
+              <select
+                id="transcript-audio-speed"
+                class="form-select form-select-sm"
+                style="width: auto; min-width: 80px;"
+              >
+                <option value="0.75">0.75x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.25">1.25x</option>
+                <option value="1.5">1.5x</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="w-100 d-flex justify-content-end">
           <button
