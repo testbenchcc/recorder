@@ -339,10 +339,23 @@ function renderTranscriptTimelineSegments() {
   const timelineEl = transcriptWaveformTimelineEl;
   timelineEl.innerHTML = "";
 
-  const lastSeg = transcriptSegments[transcriptSegments.length - 1];
-  const totalDuration = lastSeg && typeof lastSeg.end === "number" && lastSeg.end > 0
-    ? lastSeg.end
-    : null;
+  // Use the actual audio duration from WaveSurfer if available,
+  // otherwise fall back to the last segment's end time.
+  let totalDuration = null;
+  if (transcriptWavesurfer && typeof transcriptWavesurfer.getDuration === "function") {
+    const audioDuration = transcriptWavesurfer.getDuration();
+    if (Number.isFinite(audioDuration) && audioDuration > 0) {
+      totalDuration = audioDuration;
+    }
+  }
+  
+  // Fallback to last segment's end time if audio duration is not available
+  if (!totalDuration) {
+    const lastSeg = transcriptSegments[transcriptSegments.length - 1];
+    totalDuration = lastSeg && typeof lastSeg.end === "number" && lastSeg.end > 0
+      ? lastSeg.end
+      : null;
+  }
 
   if (!totalDuration) {
     return;
@@ -617,6 +630,11 @@ function initTranscriptWaveform(recordingId, segments) {
       }
 
       syncTranscriptRegionsFromSegments();
+
+      // Re-render timeline segments once audio is ready and duration is known
+      ws.on("ready", () => {
+        renderTranscriptTimelineSegments();
+      });
 
       // Update skip-silence playback when the audio is ready and during playback.
       transcriptWaveTimeupdateUnsub = ws.on(
