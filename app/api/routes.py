@@ -143,7 +143,7 @@ def _parse_vad_segments_output(output: str) -> List[dict]:
     return speech_segments
 
 
-def _run_vad_segments(audio_path: Path) -> List[dict]:
+def _run_vad_segments(audio_path: Path, force: bool = False) -> List[dict]:
     if not settings.vad_binary:
         raise HTTPException(status_code=500, detail="VAD binary is not configured")
     if not settings.vad_model_path:
@@ -156,20 +156,21 @@ def _run_vad_segments(audio_path: Path) -> List[dict]:
         whisper_cfg=cfg.whisper, vad_cfg=vad_cfg
     )
 
-    cached = get_cache_entry(audio_path.stem.split("_", 2)[1], "vad_sequential")
-    if cached is not None and cached.get("config_hash") == config_hash:
-        raw = cached.get("vad_segments_json")
-        if raw:
-            try:
-                segments = json.loads(raw)
-                logger.info(
-                    "Using cached VAD segments (%d) for %s",
-                    len(segments),
-                    audio_path.name,
-                )
-                return segments
-            except Exception:  # pragma: no cover - defensive
-                pass
+    if not force:
+        cached = get_cache_entry(audio_path.stem.split("_", 2)[1], "vad_sequential")
+        if cached is not None and cached.get("config_hash") == config_hash:
+            raw = cached.get("vad_segments_json")
+            if raw:
+                try:
+                    segments = json.loads(raw)
+                    logger.info(
+                        "Using cached VAD segments (%d) for %s",
+                        len(segments),
+                        audio_path.name,
+                    )
+                    return segments
+                except Exception:  # pragma: no cover - defensive
+                    pass
 
     cmd = [
         settings.vad_binary,
@@ -674,12 +675,18 @@ def transcribe_recording_endpoint(
 
 
 @router.post("/recordings/{recording_id}/vad_segments")
-def detect_vad_segments_endpoint(recording_id: str) -> dict:
+def detect_vad_segments_endpoint(
+    recording_id: str,
+    force: bool = Query(
+        False,
+        description="Force recomputing VAD segments even if cached results exist",
+    ),
+) -> dict:
     meta = get_recording(recording_id)
     if meta is None:
         raise HTTPException(status_code=404, detail="Recording not found")
 
-    segments = _run_vad_segments(meta.path)
+    segments = _run_vad_segments(meta.path, force=force)
     return {
         "id": recording_id,
         "segments": segments,

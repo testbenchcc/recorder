@@ -662,7 +662,7 @@ async function loadCachedTranscription(id, normalizedFormat) {
   }
 }
 
-async function transcribeRecordingVadSequential(id) {
+async function transcribeRecordingVadSequential(id, forceVad) {
   const loadingEl = document.getElementById("transcript-loading");
   const contentEl = document.getElementById("transcript-content");
   const retryBtn = document.getElementById("transcript-retry-btn");
@@ -707,9 +707,10 @@ async function transcribeRecordingVadSequential(id) {
   setTranscriptStatusText("Detecting speech segments in audio file...");
 
   try {
-    const vadRes = await fetch(`/recordings/${id}/vad_segments`, {
-      method: "POST",
-    });
+    const vadUrl = forceVad
+      ? `/recordings/${id}/vad_segments?force=true`
+      : `/recordings/${id}/vad_segments`;
+    const vadRes = await fetch(vadUrl, { method: "POST" });
     if (!vadRes.ok) {
       const body = await vadRes.json().catch(() => ({}));
       errorMessage =
@@ -881,7 +882,7 @@ async function transcribeRecording(id, overrideFormat, forceFresh) {
   }
 
   if (normalizedFormat === "vad_sequential") {
-    await transcribeRecordingVadSequential(id);
+    await transcribeRecordingVadSequential(id, false);
     return;
   }
 
@@ -1034,6 +1035,16 @@ window.addEventListener("DOMContentLoaded", () => {
       timestampsEl.disabled = false;
     }
   };
+  const redoVadBtn = document.getElementById("transcript-vad-redo-btn");
+  if (redoVadBtn) {
+    redoVadBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (!currentTranscriptRecordingId) {
+        return;
+      }
+      transcribeRecordingVadSequential(currentTranscriptRecordingId, true);
+    });
+  }
   if (formatSelect) {
     formatSelect.addEventListener("change", updateVadOptionsVisibility);
   }
