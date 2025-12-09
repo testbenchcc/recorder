@@ -200,31 +200,45 @@ function initTranscriptWaveform(recordingId, segments) {
     return;
   }
 
-  transcriptSegments.forEach((seg) => {
-    const label =
-      seg.content &&
-      seg.content.trim()
-        ? seg.content.trim()
-        : `Segment ${seg.index + 1} (${seg.start.toFixed(1)}s – ${seg.end.toFixed(1)}s)`;
+  const addRegions = () => {
+    if (!transcriptRegionsPlugin || !transcriptWavesurfer) return;
 
-    transcriptRegionsPlugin.addRegion({
-      id: `segment-${seg.index}`,
-      start: seg.start,
-      end: seg.end,
-      drag: false,
-      resize: false,
-      color: "rgba(13, 110, 253, 0.3)",
-      content: label,
+    transcriptSegments.forEach((seg) => {
+      const label =
+        seg.content && seg.content.trim()
+          ? seg.content.trim()
+          : `Segment ${seg.index + 1} (${seg.start.toFixed(1)}s – ${seg.end.toFixed(1)}s)`;
+
+      transcriptRegionsPlugin.addRegion({
+        id: `segment-${seg.index}`,
+        start: seg.start,
+        end: seg.end,
+        drag: false,
+        resize: false,
+        color: "rgba(13, 110, 253, 0.3)",
+        content: label,
+      });
     });
-  });
 
-  transcriptRegionsPlugin.on("region-clicked", (region, event) => {
-    if (!region || !transcriptWavesurfer) return;
-    if (event && typeof event.stopPropagation === "function") {
-      event.stopPropagation();
-    }
-    transcriptWavesurfer.play(region.start, region.end);
-  });
+    transcriptRegionsPlugin.on("region-clicked", (region, event) => {
+      if (!region || !transcriptWavesurfer) return;
+      if (event && typeof event.stopPropagation === "function") {
+        event.stopPropagation();
+      }
+      transcriptWavesurfer.play(region.start, region.end);
+    });
+  };
+
+  const ws = transcriptWavesurfer;
+  if (ws && typeof ws.getDuration === "function" && ws.getDuration() > 0) {
+    addRegions();
+  } else if (ws && typeof ws.once === "function") {
+    ws.once("ready", addRegions);
+  } else if (ws && typeof ws.on === "function") {
+    ws.on("ready", addRegions);
+  } else {
+    window.setTimeout(addRegions, 500);
+  }
 }
 
 function showTranscriptProgress(total) {
