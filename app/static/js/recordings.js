@@ -203,8 +203,35 @@ function ensureTranscriptWaveformStructure() {
   };
 }
 
+function getTranscriptSegmentIndexFromRegionId(regionId) {
+  if (typeof regionId !== "string") return null;
+  const match = regionId.match(/^seg-(\d+)/);
+  if (!match) return null;
+  const idx = Number.parseInt(match[1], 10);
+  return Number.isFinite(idx) ? idx : null;
+}
+
+function highlightTranscriptSegmentContent(segmentIndex) {
+  const highlighted = document.querySelectorAll(".transcript-segment-highlight");
+  highlighted.forEach((el) => el.classList.remove("transcript-segment-highlight"));
+
+  if (segmentIndex == null || segmentIndex < 0) return;
+
+  const chatEl = document.getElementById("transcript-chat");
+  if (!chatEl) return;
+
+  const target = chatEl.querySelector(
+    `[data-segment-index="${segmentIndex}"]`,
+  );
+  if (target) {
+    target.classList.add("transcript-segment-highlight");
+  }
+}
+
 function setActiveTranscriptRegion(regionId) {
   transcriptActiveRegionId = regionId || null;
+  const segmentIndex = getTranscriptSegmentIndexFromRegionId(regionId || "");
+  highlightTranscriptSegmentContent(segmentIndex);
   if (!transcriptWaveformTimelineEl) return;
   const blocks = transcriptWaveformTimelineEl.querySelectorAll(
     ".transcript-waveform-segment",
