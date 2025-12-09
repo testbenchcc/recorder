@@ -306,33 +306,32 @@
 <style>
   .recordings-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1.5rem;
     margin-bottom: 2rem;
   }
 
   @media (min-width: 576px) {
     .recordings-grid {
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    }
-  }
-
-  @media (min-width: 768px) {
-    .recordings-grid {
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 
   @media (min-width: 992px) {
     .recordings-grid {
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
     }
   }
 
   @media (min-width: 1400px) {
     .recordings-grid {
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      max-width: calc(340px * 5 + 1.5rem * 4);
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  @media (min-width: 1800px) {
+    .recordings-grid {
+      grid-template-columns: repeat(5, 1fr);
     }
   }
 
@@ -519,5 +518,65 @@
 </style>
 <script src="/static/node_modules/wavesurfer.js/dist/wavesurfer.min.js"></script>
 <script src="/static/node_modules/wavesurfer.js/dist/plugins/regions.min.js"></script>
+<script type="module">
+  import WaveSurfer from '/static/node_modules/wavesurfer.js/dist/wavesurfer.min.js';
+  import Regions from '/static/node_modules/wavesurfer.js/dist/plugins/regions.min.js';
+  
+  WaveSurfer.create.registerPlugin(Regions);
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.tagName === 'WAVESURFER') {
+            initWaveSurfer(node);
+          }
+          if (node.querySelectorAll) {
+            node.querySelectorAll('wavesurfer').forEach(initWaveSurfer);
+          }
+        });
+      });
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    document.querySelectorAll('wavesurfer').forEach(initWaveSurfer);
+  });
+  
+  function initWaveSurfer(el) {
+    if (el._wavesurfer) return;
+    
+    const options = {
+      container: el,
+      height: parseInt(el.dataset.height) || 128,
+      waveColor: el.dataset.waveColor || '#ddd',
+      progressColor: el.dataset.progressColor || '#999',
+      cursorWidth: parseInt(el.dataset.cursorWidth) || 1,
+      barWidth: parseInt(el.dataset.barWidth) || 2,
+      barGap: parseInt(el.dataset.barGap) || 1,
+      barRadius: parseInt(el.dataset.barRadius) || 2,
+      interact: el.dataset.interact !== 'false',
+      url: el.dataset.url
+    };
+    
+    const ws = WaveSurfer.create(options);
+    el._wavesurfer = ws;
+    
+    if (el.dataset.plugins && el.dataset.plugins.includes('regions')) {
+      const regionsPlugin = ws.registerPlugin(Regions.create());
+      
+      if (el.dataset.regionsRegions) {
+        try {
+          const regions = JSON.parse(el.dataset.regionsRegions);
+          ws.on('ready', () => {
+            regions.forEach(region => regionsPlugin.addRegion(region));
+          });
+        } catch (e) {
+          console.error('Failed to parse regions data', e);
+        }
+      }
+    }
+  }
+</script>
 <script src="/static/js/recordings.js"></script>
 {% endblock %}

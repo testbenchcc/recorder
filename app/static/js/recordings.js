@@ -1042,16 +1042,22 @@ async function loadCardWaveform(recordingId, cardElement) {
   try {
     const cachedVad = getCachedVadSegments(recordingId);
     if (cachedVad && cachedVad.length > 0) {
-      renderCardWaveform(waveformContainer, cachedVad);
+      renderCardWaveform(waveformContainer, recordingId, cachedVad);
       return;
     }
 
-    const vadRes = await fetch(`/recordings/${recordingId}/vad`);
+    const vadRes = await fetch(`/recordings/${recordingId}/vad_segments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
     if (vadRes.ok) {
       const vadData = await vadRes.json();
       if (vadData.segments && vadData.segments.length > 0) {
         setCachedVadSegments(recordingId, vadData.segments);
-        renderCardWaveform(waveformContainer, vadData.segments);
+        renderCardWaveform(waveformContainer, recordingId, vadData.segments);
       }
     }
   } catch (err) {
@@ -1059,37 +1065,37 @@ async function loadCardWaveform(recordingId, cardElement) {
   }
 }
 
-function renderCardWaveform(container, vadSegments) {
+function renderCardWaveform(container, recordingId, vadSegments) {
   if (!container || !vadSegments || vadSegments.length === 0) return;
 
-  const duration = Math.max(...vadSegments.map(s => s.end));
-  if (duration <= 0) return;
+  const regionsData = vadSegments.map(seg => ({
+    start: seg.start,
+    end: seg.end,
+    color: "rgba(255, 255, 255, 0.3)",
+    drag: false,
+    resize: false
+  }));
 
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("width", "100%");
-  svg.setAttribute("height", "100%");
-  svg.setAttribute("viewBox", "0 0 100 100");
-  svg.setAttribute("preserveAspectRatio", "none");
-  svg.style.position = "absolute";
-  svg.style.top = "0";
-  svg.style.left = "0";
+  const wavesurferEl = document.createElement('wavesurfer');
+  wavesurferEl.setAttribute('data-url', `/recordings/${recordingId}/stream`);
+  wavesurferEl.setAttribute('data-height', '80');
+  wavesurferEl.setAttribute('data-wave-color', 'rgba(255, 255, 255, 0.5)');
+  wavesurferEl.setAttribute('data-progress-color', 'rgba(255, 255, 255, 0.8)');
+  wavesurferEl.setAttribute('data-cursor-width', '0');
+  wavesurferEl.setAttribute('data-bar-width', '2');
+  wavesurferEl.setAttribute('data-bar-gap', '1');
+  wavesurferEl.setAttribute('data-bar-radius', '2');
+  wavesurferEl.setAttribute('data-interact', 'false');
+  wavesurferEl.setAttribute('data-plugins', 'regions');
+  wavesurferEl.setAttribute('data-regions-regions', JSON.stringify(regionsData));
+  
+  wavesurferEl.style.position = 'absolute';
+  wavesurferEl.style.top = '0';
+  wavesurferEl.style.left = '0';
+  wavesurferEl.style.width = '100%';
+  wavesurferEl.style.height = '100%';
 
-  vadSegments.forEach(seg => {
-    const startPercent = (seg.start / duration) * 100;
-    const widthPercent = ((seg.end - seg.start) / duration) * 100;
-    
-    const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    rect.setAttribute("x", startPercent);
-    rect.setAttribute("y", "20");
-    rect.setAttribute("width", widthPercent);
-    rect.setAttribute("height", "60");
-    rect.setAttribute("fill", "rgba(255, 255, 255, 0.4)");
-    rect.setAttribute("rx", "2");
-    
-    svg.appendChild(rect);
-  });
-
-  container.appendChild(svg);
+  container.appendChild(wavesurferEl);
 }
 
 function playRecording(id) {
