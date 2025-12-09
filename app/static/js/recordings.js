@@ -99,31 +99,20 @@ function normalizeTranscriptSegments(rawSegments) {
 }
 
 function ensureTranscriptWaveformStructure() {
-  const waveformEl = document.getElementById("transcript-waveform");
-  if (!waveformEl) {
+  const outerEl = document.getElementById("transcript-waveform");
+  if (!outerEl) {
     return null;
   }
 
-  // Make the outer container a positioned box so we can stack layers.
-  if (!waveformEl.style.position) {
-    waveformEl.style.position = "relative";
-  }
-
-  if (!transcriptWaveformTimelineEl) {
-    transcriptWaveformTimelineEl = document.createElement("div");
-    transcriptWaveformTimelineEl.className = "transcript-waveform-timeline";
-    transcriptWaveformTimelineEl.style.position = "absolute";
-    transcriptWaveformTimelineEl.style.top = "0";
-    transcriptWaveformTimelineEl.style.left = "0";
-    transcriptWaveformTimelineEl.style.right = "0";
-    transcriptWaveformTimelineEl.style.bottom = "0";
-    transcriptWaveformTimelineEl.style.pointerEvents = "auto";
-    transcriptWaveformTimelineEl.style.zIndex = "2";
-    waveformEl.appendChild(transcriptWaveformTimelineEl);
+  let innerEl = document.getElementById("transcript-waveform-inner");
+  if (!innerEl) {
+    innerEl = document.createElement("div");
+    innerEl.id = "transcript-waveform-inner";
+    outerEl.appendChild(innerEl);
   }
 
   return {
-    container: waveformEl,
+    container: innerEl,
     timelineEl: transcriptWaveformTimelineEl,
   };
 }
@@ -341,7 +330,7 @@ function initTranscriptWaveform(recordingId, segments) {
 
       transcriptWavesurfer = WaveSurfer.create({
         container,
-        height: "auto",
+        height: 80,
         waveColor: "rgba(0, 0, 0, 0.25)",
         progressColor: "#0d6efd",
         cursorColor: "#0d6efd",

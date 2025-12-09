@@ -185,7 +185,9 @@
             <div
               id="transcript-waveform"
               class="border rounded"
-            ></div>
+            >
+              <div id="transcript-waveform-inner"></div>
+            </div>
           </div>
           <div
             id="transcript-content-cell"
@@ -336,13 +338,22 @@
   }
 
   #transcript-modal #transcript-waveform {
-    display: flex;
-    flex: 1 1 auto;
-    width: 100%;
+    position: relative;
+    width: 80px;
     height: 100%;
     min-height: 200px;
     background: #f8f9fa;
-    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+
+  #transcript-modal #transcript-waveform-inner {
+    width: 70vh;
+    height: 80px;
+    transform-origin: top left;
+    transform: rotate(-90deg) translateX(-100%);
   }
 
   #transcript-modal .transcript-content-cell {
