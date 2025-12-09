@@ -1642,7 +1642,43 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
   if (formatSelect) {
-    formatSelect.addEventListener("change", updateVadOptionsVisibility);
+    formatSelect.addEventListener("change", async () => {
+      updateVadOptionsVisibility();
+      
+      // When format changes, try to load cached data for the new format
+      if (!currentTranscriptRecordingId) {
+        return;
+      }
+      
+      const newFormat = getSelectedTranscriptFormat();
+      const normalizedFormat = typeof newFormat === "string" 
+        ? newFormat.trim().toLowerCase() 
+        : null;
+      
+      if (!normalizedFormat) {
+        return;
+      }
+      
+      // Try to load cached transcription for the new format
+      const contentEl = document.getElementById("transcript-content");
+      if (contentEl) {
+        contentEl.style.display = "none";
+        contentEl.textContent = "";
+      }
+      
+      resetTranscriptChat();
+      
+      const usedCache = await loadCachedTranscription(
+        currentTranscriptRecordingId, 
+        normalizedFormat
+      );
+      
+      if (!usedCache && contentEl) {
+        // No cached data for this format
+        contentEl.style.display = "block";
+        contentEl.textContent = "No cached transcription for this format. Press Resend to transcribe.";
+      }
+    });
   }
   // Initialize transcript format select from configured default, if available.
   if (formatSelect) {

@@ -123,7 +123,7 @@ Once the app is running, open the web UI (for example, `http://recorder:8080`). 
 > - **Opening the modal**: Loads cached transcriptions and VAD segments when available, avoiding unnecessary API calls
 > - **Resend button**: Re-runs transcription while preserving the waveform visualization and timeline annotations
 > - **Regen VAD button**: Only regenerates speech detection regions and updates timeline annotations (does not transcribe)
-> - **Format switching**: Changing response formats uses cached data when available
+> - **Format switching**: Automatically loads cached data for the selected format if available, or shows a message to press Resend
 > 
 > **VAD (Voice Activity Detection)** segments are useful for all formats as they provide visual timeline annotations, but only VAD + Sequential format requires them for transcription.
 
