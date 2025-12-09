@@ -126,22 +126,22 @@ Browser recordings are uploaded to the server, converted to WAV (using `ffmpeg`)
 
 ## User Interface
 
-The application features a **modern dark theme** with vibrant purple accents across all pages:
+The application features a **modern dark theme** with teal and warm accent colors across all pages:
 
 ### Design System
-- **Dark Theme**: Deep navy background (#1a1a2e) with card backgrounds (#1f1f2e) for reduced eye strain
-- **Purple Gradient**: Signature gradient (purple to violet) used in navigation, card headers, and primary buttons
+- **Dark Theme**: Teal slate background (#28536b) with deep plum card backgrounds (#270722) for reduced eye strain
+- **Gradient Accents**: Signature teal-to-sunset gradient (#80a1c1 → #f39237) used in navigation, card headers, and primary buttons
 - **Modern Typography**: Light text on dark backgrounds with muted secondary colors for hierarchy
 - **Compact Layout**: Fluid containers with `px-3 py-3` spacing for efficient use of screen space
 - **Flexible Components**: Bootstrap 5 with `gap-2` spacing, small form controls (`form-select-sm`, `btn-sm`)
 - **Responsive Design**: Adaptive layouts that work seamlessly from mobile to desktop
-- **Consistent Actions**: Purple gradient primary buttons with hover effects and uniform sizing
+- **Consistent Actions**: Gradient primary buttons with hover effects and uniform sizing
 
 ### Recordings Page
 The **Recordings** page showcases the design system with:
 - **Responsive Grid**: Automatically adjusts from 1 to 5 columns based on screen width
 - **Visual Timeline**: Each card displays a mini audio waveform with VAD (Voice Activity Detection) segments in the header
-- **Purple Gradient Headers**: Beautiful gradient backgrounds (#667eea to #764ba2) with hover effects
+- **Gradient Headers**: Beautiful teal-to-sunset gradient backgrounds (#80a1c1 to #f39237) with hover effects
 - **Quick Actions**: Click any card to open the transcription modal, or use the action buttons for Play, Download, Rename, and Delete
 - **Organized Info**: Recording details (date, time, duration, size) displayed in a clean grid layout
 - **Dark Cards**: Elevated card design with subtle borders that pop against the dark background
