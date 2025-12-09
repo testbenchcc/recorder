@@ -1,13 +1,12 @@
 let browserRecorderWaveSurfer = null;
 let browserRecordPlugin = null;
 let browserScrollingWaveform = false;
-let browserContinuousWaveform = true;
 
 const browserProgressEl = document.querySelector("#progress");
 const browserPauseButton = document.querySelector("#pause");
 const browserRecordButton = document.querySelector("#record");
 const browserMicSelect = document.querySelector("#mic-select");
-const browserRecordingsContainer = document.querySelector("#recordings");
+const browserStatusBadge = document.querySelector("#browser-status-badge");
 
 function browserUpdateProgress(timeMs) {
   if (!browserProgressEl) return;
@@ -61,8 +60,7 @@ function browserCreateWaveSurfer() {
     RecordPluginGlobal.create({
       renderRecordedAudio: false,
       scrollingWaveform: browserScrollingWaveform,
-      continuousWaveform: browserContinuousWaveform,
-      continuousWaveformDuration: 30,
+      continuousWaveform: false,
     }),
   );
 
@@ -75,56 +73,6 @@ function browserCreateWaveSurfer() {
   });
 
   browserRecordPlugin.on("record-end", (blob) => {
-    if (!browserRecordingsContainer) {
-      return;
-    }
-
-    const recordedUrl = URL.createObjectURL(blob);
-
-    const itemWrapper = document.createElement("div");
-    itemWrapper.className = "d-flex flex-wrap align-items-center gap-2 mb-1";
-
-    const clipContainer = document.createElement("div");
-    clipContainer.style.minWidth = "120px";
-    clipContainer.style.flex = "1 1 auto";
-
-    const ws = WaveSurfer.create({
-      container: clipContainer,
-      waveColor: "rgb(200, 100, 0)",
-      progressColor: "rgb(100, 50, 0)",
-      height: 48,
-      url: recordedUrl,
-    });
-
-    const playButton = document.createElement("button");
-    playButton.type = "button";
-    playButton.className = "btn btn-sm btn-outline-primary";
-    playButton.textContent = "Play";
-    playButton.onclick = () => {
-      if (!ws) return;
-      ws.playPause();
-    };
-
-    ws.on("pause", () => {
-      playButton.textContent = "Play";
-    });
-    ws.on("play", () => {
-      playButton.textContent = "Pause";
-    });
-
-    const downloadLink = document.createElement("a");
-    downloadLink.className = "btn btn-sm btn-outline-secondary";
-    downloadLink.href = recordedUrl;
-    const extension = blob.type && blob.type.split(";")[0].split("/")[1];
-    downloadLink.download = "recording." + (extension || "webm");
-    downloadLink.textContent = "Download";
-
-    itemWrapper.appendChild(clipContainer);
-    itemWrapper.appendChild(playButton);
-    itemWrapper.appendChild(downloadLink);
-
-    browserRecordingsContainer.appendChild(itemWrapper);
-
     if (browserPauseButton) {
       browserPauseButton.style.display = "none";
       browserPauseButton.textContent = "Pause";
@@ -134,6 +82,7 @@ function browserCreateWaveSurfer() {
       browserRecordButton.disabled = false;
     }
     browserUpdateProgress(0);
+    browserSetStatus(false);
 
     const formData = new FormData();
     const now = new Date();
@@ -182,6 +131,19 @@ function browserCreateWaveSurfer() {
   }
   if (browserRecordButton) {
     browserRecordButton.textContent = "Record";
+  }
+}
+
+function browserSetStatus(isRecording) {
+  if (!browserStatusBadge) return;
+  if (isRecording) {
+    browserStatusBadge.textContent = "Recording";
+    browserStatusBadge.classList.remove("bg-secondary");
+    browserStatusBadge.classList.add("bg-danger");
+  } else {
+    browserStatusBadge.textContent = "Idle";
+    browserStatusBadge.classList.remove("bg-danger");
+    browserStatusBadge.classList.add("bg-secondary");
   }
 }
 
@@ -255,6 +217,7 @@ function browserAttachEventHandlers() {
           browserPauseButton.style.display = "none";
           browserPauseButton.textContent = "Pause";
         }
+        browserSetStatus(false);
         return;
       }
 
@@ -278,6 +241,7 @@ function browserAttachEventHandlers() {
               browserPauseButton.style.display = "inline-block";
               browserPauseButton.textContent = "Pause";
             }
+            browserSetStatus(true);
           })
           .catch(() => {
             if (browserRecordButton) {
@@ -288,37 +252,17 @@ function browserAttachEventHandlers() {
               browserPauseButton.style.display = "none";
               browserPauseButton.textContent = "Pause";
             }
+            browserSetStatus(false);
           });
       }
     };
   }
 
   const scrollingCheckbox = document.querySelector("#scrollingWaveform");
-  const continuousCheckbox = document.querySelector("#continuousWaveform");
 
   if (scrollingCheckbox) {
     scrollingCheckbox.addEventListener("click", (e) => {
       browserScrollingWaveform = !!e.target.checked;
-      if (browserContinuousWaveform && browserScrollingWaveform) {
-        browserContinuousWaveform = false;
-        if (continuousCheckbox) {
-          continuousCheckbox.checked = false;
-        }
-      }
-      browserCreateWaveSurfer();
-      browserInitMicSelection();
-    });
-  }
-
-  if (continuousCheckbox) {
-    continuousCheckbox.addEventListener("click", (e) => {
-      browserContinuousWaveform = !!e.target.checked;
-      if (browserContinuousWaveform && browserScrollingWaveform) {
-        browserScrollingWaveform = false;
-        if (scrollingCheckbox) {
-          scrollingCheckbox.checked = false;
-        }
-      }
       browserCreateWaveSurfer();
       browserInitMicSelection();
     });
@@ -334,4 +278,5 @@ window.addEventListener("DOMContentLoaded", () => {
   browserAttachEventHandlers();
   browserInitMicSelection();
   browserUpdateProgress(0);
+  browserSetStatus(false);
 });
