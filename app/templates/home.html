@@ -68,9 +68,76 @@
     </div>
   </div>
 
+  <div class="col-lg-4 mb-3">
+    <div class="card h-100">
+      <div
+        class="card-header d-flex justify-content-between align-items-center"
+      >
+        <span>Browser recorder</span>
+        <span class="badge bg-secondary">Mic</span>
+      </div>
+      <div class="card-body">
+        <p class="small text-muted">
+          Record a short clip in your browser to test the microphone and
+          download the audio.
+        </p>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <button id="record" class="btn btn-sm btn-primary">Record</button>
+          <button
+            id="pause"
+            class="btn btn-sm btn-outline-secondary"
+            style="display: none;"
+          >
+            Pause
+          </button>
+          <select
+            id="mic-select"
+            class="form-select form-select-sm"
+            style="width: auto; min-width: 140px;"
+          >
+            <option value="" hidden>Select mic</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="scrollingWaveform"
+            />
+            <label class="form-check-label small" for="scrollingWaveform">
+              Scrolling waveform
+            </label>
+          </div>
+          <div class="form-check form-check-inline">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              id="continuousWaveform"
+              checked
+            />
+            <label class="form-check-label small" for="continuousWaveform">
+              Continuous waveform
+            </label>
+          </div>
+        </div>
+        <p id="progress" class="mb-1 small text-monospace">00:00</p>
+        <div
+          id="mic"
+          class="border rounded"
+          style="height: 96px; border-radius: 4px;"
+        ></div>
+        <div id="recordings" class="mt-2 small"></div>
+      </div>
+    </div>
+  </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="/static/node_modules/wavesurfer.js/dist/wavesurfer.min.js"></script>
+<script src="/static/node_modules/wavesurfer.js/dist/plugins/record.min.js"></script>
 <script src="/static/js/home.js"></script>
+<script src="/static/js/browser_record.js"></script>
 {% endblock %}

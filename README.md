@@ -117,6 +117,8 @@ chmod +x run.sh
 ./run.sh
 ```
 
+Once the app is running, open the web UI (for example, `http://recorder:8080`). On the Home page you can use the **Browser recorder** card to capture short test clips directly in the browser using the device microphone and download the audio.
+
 To update the program run the following inside the repo folder and restart the device:
 
 ```bash
