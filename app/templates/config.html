@@ -56,6 +56,29 @@
 
       <div style="break-inside: avoid; margin-bottom: 1rem;">
         <div class="card">
+        <div class="card-header">Recording defaults</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label for="default-max-duration-seconds" class="form-label small">
+              Default max duration (seconds)
+            </label>
+            <input
+              type="number"
+              class="form-control form-control-sm"
+              id="default-max-duration-seconds"
+              min="1"
+            />
+            <div class="form-text">
+              This value is pre-filled on the home page and used when starting a new recording.
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">Save configuration</button>
+        </div>
+        </div>
+      </div>
+
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
+        <div class="card">
         <div class="card-header">Whisper transcription server</div>
         <div class="card-body">
           <div class="form-check form-switch mb-3">
@@ -234,28 +257,6 @@
         </div>
       </div>
 
-      <div style="break-inside: avoid; margin-bottom: 1rem;">
-        <div class="card">
-        <div class="card-header">Recording defaults</div>
-        <div class="card-body">
-          <div class="mb-3">
-            <label for="default-max-duration-seconds" class="form-label small">
-              Default max duration (seconds)
-            </label>
-            <input
-              type="number"
-              class="form-control form-control-sm"
-              id="default-max-duration-seconds"
-              min="1"
-            />
-            <div class="form-text">
-              This value is pre-filled on the home page and used when starting a new recording.
-            </div>
-          </div>
-          <button type="submit" class="btn btn-sm btn-primary">Save configuration</button>
-        </div>
-        </div>
-      </div>
     </div>
   </form>
 
