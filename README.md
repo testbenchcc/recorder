@@ -126,11 +126,11 @@ Browser recordings are uploaded to the server, converted to WAV (using `ffmpeg`)
 
 ## User Interface
 
-The application features a **modern dark theme** with teal and warm accent colors across all pages:
+The application features a **modern dark theme** with burnt orange accents across all pages:
 
 ### Design System
-- **Dark Theme**: Teal slate background (#28536b) with deep plum card backgrounds (#270722) for reduced eye strain
-- **Gradient Accents**: Signature teal-to-sunset gradient (#80a1c1 → #f39237) used in navigation, card headers, and primary buttons
+- **Dark Theme**: Teal slate background (#28536b) with deep plum card backgrounds (#270722) and burnt orange accents (#f39237) for reduced eye strain
+- **Gradient Accents**: Signature burnt-orange gradient (#c86b23 → #f39237) used in navigation, card headers, and primary buttons
 - **Modern Typography**: Light text on dark backgrounds with muted secondary colors for hierarchy
 - **Compact Layout**: Fluid containers with `px-3 py-3` spacing for efficient use of screen space
 - **Flexible Components**: Bootstrap 5 with `gap-2` spacing, small form controls (`form-select-sm`, `btn-sm`)
@@ -141,15 +141,15 @@ The application features a **modern dark theme** with teal and warm accent color
 The **Recordings** page showcases the design system with:
 - **Responsive Grid**: Automatically adjusts from 1 to 5 columns based on screen width
 - **Visual Timeline**: Each card displays a mini audio waveform with VAD (Voice Activity Detection) segments in the header
-- **Gradient Headers**: Beautiful teal-to-sunset gradient backgrounds (#80a1c1 to #f39237) with hover effects
+- **Gradient Headers**: Beautiful burnt-orange gradient backgrounds (#c86b23 to #f39237) with hover effects
 - **Quick Actions**: Click any card to open the transcription modal, or use the action buttons for Play, Download, Rename, and Delete
 - **Organized Info**: Recording details (date, time, duration, size) displayed in a clean grid layout
 - **Dark Cards**: Elevated card design with subtle borders that pop against the dark background
 
 ### Dashboard & Configuration
 The **Home** and **Configuration** pages follow the same design principles:
-- Dark card-based layouts with purple gradient headers
-- Dark input fields with purple focus states
+- Dark card-based layouts with burnt-orange headers
+- Dark input fields with burnt-orange focus states
 - Small, efficient form controls and buttons
 - Compact headers and labels for maximum content density
 - Responsive layouts that adapt to any screen size
