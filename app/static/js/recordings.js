@@ -265,6 +265,10 @@ function playTranscriptSegment(segmentIndex) {
     return true;
   }
 
+  if (typeof transcriptWavesurfer.setTime === "function") {
+    transcriptWavesurfer.setTime(start);
+  }
+
   transcriptWavesurfer.play(start, end).catch(() => {});
   return true;
 }
