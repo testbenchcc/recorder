@@ -694,13 +694,22 @@ def get_cached_transcription_endpoint(
     whisper_cfg = cfg.whisper
     vad_cfg = getattr(cfg, "vad", None)
 
-    config_hash, _ = build_config_fingerprint(
-        whisper_cfg=whisper_cfg, vad_cfg=vad_cfg
-    )
-
     fmt = (response_format or "").strip().lower()
     if not fmt:
         fmt = (whisper_cfg.response_format or "json").strip().lower()
+
+    # For non-VAD formats, cached transcriptions are keyed only on the
+    # Whisper configuration (they do not depend on VAD settings).
+    # VAD + Sequential results, on the other hand, are tied to the
+    # VAD configuration because both segmentation and aggregation use it.
+    if fmt == "vad_sequential":
+        config_hash, _ = build_config_fingerprint(
+            whisper_cfg=whisper_cfg, vad_cfg=vad_cfg
+        )
+    else:
+        config_hash, _ = build_config_fingerprint(
+            whisper_cfg=whisper_cfg, vad_cfg=None
+        )
 
     cached = get_cache_entry(recording_id, fmt)
     if cached is None or cached.get("config_hash") != config_hash:

@@ -761,6 +761,11 @@ async function transcribeRecordingVadSequential(id) {
       params.set("start", String(seg.start));
       params.set("end", String(seg.end));
       params.set("segment_index", String(i));
+      // ui_format tells the backend that this run is using the
+      // VAD + Sequential UI mode so that it can store and reuse
+      // cached segment transcriptions under the 'vad_sequential'
+      // cache key.
+      params.set("ui_format", "vad_sequential");
       if (segmentResponseFormat) {
         params.set("response_format", segmentResponseFormat);
       }
