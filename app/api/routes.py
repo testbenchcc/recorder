@@ -6,12 +6,13 @@ import os
 import re
 import subprocess
 import wave
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -532,6 +533,88 @@ def stop_recording() -> dict:
         "stopped": True,
         "id": info.id,
         "path": str(info.path),
+    }
+
+
+@router.post("/recordings/upload")
+async def upload_recording(file: UploadFile = File(...)) -> dict:
+    try:
+        contents = await file.read()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Failed to read uploaded file") from exc
+
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded audio file is empty")
+
+    root = Path(settings.recording_dir)
+    now = datetime.now(timezone.utc)
+    day_dir = root / now.strftime("%Y") / now.strftime("%m") / now.strftime("%d")
+    day_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = now.strftime("%Y%m%dT%H%M%S")
+    recording_id = uuid.uuid4().hex
+    out_path = day_dir / f"{timestamp}_{recording_id}.wav"
+
+    cmd = [
+        "ffmpeg",
+        "-nostdin",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-i",
+        "pipe:0",
+        "-acodec",
+        "pcm_s16le",
+        "-ac",
+        str(settings.channels),
+        "-ar",
+        str(settings.sample_rate),
+        str(out_path),
+    ]
+
+    try:
+        proc = subprocess.run(
+            cmd,
+            check=False,
+            input=contents,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except FileNotFoundError as exc:
+        logger.error("ffmpeg not found while handling browser upload")
+        raise HTTPException(
+            status_code=500,
+            detail="Server is missing ffmpeg; cannot accept browser audio uploads",
+        ) from exc
+    except OSError as exc:
+        logger.error("Failed to start ffmpeg for browser upload: %s", exc)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to process uploaded audio on the server",
+        ) from exc
+
+    if proc.returncode != 0 or not out_path.exists():
+        logger.error(
+            "ffmpeg conversion for browser upload failed (%s): %s",
+            proc.returncode,
+            proc.stderr.decode("utf-8", errors="ignore"),
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Failed to convert uploaded audio to WAV format",
+        )
+
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=500, detail="Failed to index uploaded recording")
+
+    return {
+        "id": meta.id,
+        "path": str(meta.path),
+        "name": _display_name(meta.path),
+        "size_bytes": meta.size_bytes,
+        "duration_seconds": meta.duration_seconds,
+        "created_at": meta.created_at.isoformat(),
     }
 
 

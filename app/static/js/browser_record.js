@@ -134,6 +134,47 @@ function browserCreateWaveSurfer() {
       browserRecordButton.disabled = false;
     }
     browserUpdateProgress(0);
+
+    const formData = new FormData();
+    const now = new Date();
+    const iso = now.toISOString().replace(/[:.]/g, "").replace("Z", "");
+    const ext = (blob.type && blob.type.split(";")[0].split("/")[1]) || "webm";
+    const filename = `browser_${iso}.${ext}`;
+    formData.append("file", blob, filename);
+
+    fetch("/recordings/upload", {
+      method: "POST",
+      body: formData,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          let message = "Failed to save browser recording";
+          try {
+            const data = await res.json();
+            if (data && data.detail) {
+              message = data.detail;
+            }
+          } catch (_) {}
+          if (typeof window !== "undefined" && typeof window.setMessage === "function") {
+            window.setMessage(message, "danger");
+          }
+          return;
+        }
+
+        let data = null;
+        try {
+          data = await res.json();
+        } catch (_) {}
+        const name = data && (data.name || data.id || "recording");
+        if (typeof window !== "undefined" && typeof window.setMessage === "function") {
+          window.setMessage(`Saved browser recording as ${name}`, "success");
+        }
+      })
+      .catch(() => {
+        if (typeof window !== "undefined" && typeof window.setMessage === "function") {
+          window.setMessage("Error uploading browser recording", "danger");
+        }
+      });
   });
 
   if (browserPauseButton) {
