@@ -62,21 +62,6 @@ function clearTranscriptRegions() {
   }
 }
 
-function getTranscriptSegmentLabel(seg) {
-  if (!seg) return "";
-  const content = (seg.content || "").trim();
-  if (content) {
-    const maxLength = 120;
-    return content.length > maxLength
-      ? `${content.slice(0, maxLength - 3)}...`
-      : content;
-  }
-  if (typeof seg.index === "number") {
-    return `Segment ${seg.index + 1}`;
-  }
-  return "Segment";
-}
-
 function syncTranscriptRegionsFromSegments() {
   if (
     !transcriptRegionsPlugin ||
@@ -104,8 +89,7 @@ function syncTranscriptRegionsFromSegments() {
       end,
       drag: false,
       resize: false,
-      content: getTranscriptSegmentLabel(seg),
-      color: "rgba(13, 110, 253, 0.15)",
+      color: "rgba(13, 110, 253, 0.12)",
     });
   });
 }
@@ -123,25 +107,6 @@ function updateTranscriptSegmentContent(segIndex, content) {
   const seg = transcriptSegments[segIndex];
   if (!seg) return;
   seg.content = content || "";
-
-  if (
-    !transcriptRegionsPlugin ||
-    typeof transcriptRegionsPlugin.getRegions !== "function"
-  ) {
-    return;
-  }
-
-  const regionId = `seg-${seg.index}`;
-  const region = transcriptRegionsPlugin
-    .getRegions()
-    .find((r) => r && r.id === regionId);
-  const label = getTranscriptSegmentLabel(seg);
-
-  if (region && typeof region.setOptions === "function") {
-    region.setOptions({ content: label });
-  } else {
-    syncTranscriptRegionsFromSegments();
-  }
 }
 
 function getTranscriptAudioStreamUrl(recordingId) {
