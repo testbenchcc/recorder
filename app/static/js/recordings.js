@@ -28,7 +28,6 @@ const transcriptAudioUrlPromises = new Map();
 
 // Elements used for drawing the waveform and overlaying segment blocks.
 let transcriptWaveformTimelineEl = null;
-let transcriptWaveformCanvasEl = null;
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", () => {
@@ -123,22 +122,9 @@ function ensureTranscriptWaveformStructure() {
     waveformEl.appendChild(transcriptWaveformTimelineEl);
   }
 
-  if (!transcriptWaveformCanvasEl) {
-    transcriptWaveformCanvasEl = document.createElement("div");
-    transcriptWaveformCanvasEl.className = "transcript-waveform-canvas";
-    transcriptWaveformCanvasEl.style.position = "absolute";
-    transcriptWaveformCanvasEl.style.top = "0";
-    transcriptWaveformCanvasEl.style.left = "0";
-    transcriptWaveformCanvasEl.style.right = "0";
-    transcriptWaveformCanvasEl.style.bottom = "0";
-    transcriptWaveformCanvasEl.style.zIndex = "1";
-    waveformEl.appendChild(transcriptWaveformCanvasEl);
-  }
-
   return {
     container: waveformEl,
     timelineEl: transcriptWaveformTimelineEl,
-    canvasEl: transcriptWaveformCanvasEl,
   };
 }
 
@@ -307,7 +293,6 @@ function destroyTranscriptWaveform() {
   transcriptWavesurfer = null;
   transcriptSegments = [];
   transcriptWaveformTimelineEl = null;
-  transcriptWaveformCanvasEl = null;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
@@ -338,7 +323,7 @@ function initTranscriptWaveform(recordingId, segments) {
     transcriptWavesurfer.destroy();
   }
   transcriptWavesurfer = null;
-  const { canvasEl } = structure;
+  const { container } = structure;
 
   if (typeof transcriptWaveTimeupdateUnsub === "function") {
     transcriptWaveTimeupdateUnsub();
@@ -355,7 +340,7 @@ function initTranscriptWaveform(recordingId, segments) {
       }
 
       transcriptWavesurfer = WaveSurfer.create({
-        container: canvasEl,
+        container,
         waveColor: "rgba(0, 0, 0, 0.25)",
         progressColor: "#0d6efd",
         cursorColor: "#0d6efd",
