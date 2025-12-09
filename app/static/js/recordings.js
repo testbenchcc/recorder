@@ -359,7 +359,7 @@ function initTranscriptWaveform(recordingId, segments) {
         waveColor: "rgba(0, 0, 0, 0.25)",
         progressColor: "#0d6efd",
         cursorColor: "#0d6efd",
-        height: 80,
+        vertical: true,
         responsive: true,
         url: audioUrl || getTranscriptAudioStreamUrl(recordingId),
       });
