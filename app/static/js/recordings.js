@@ -571,6 +571,13 @@ function resetTranscriptProgressUI() {
 
   transcriptTotalSegments = 0;
   transcriptCompletedSegments = 0;
+  
+  // Resize waveform after hiding progress bar to prevent layout shift
+  // Use setTimeout to ensure DOM has updated
+  setTimeout(() => {
+    resizeTranscriptWaveformVertical();
+    renderTranscriptTimelineSegments();
+  }, 0);
 }
 
 function destroyTranscriptWaveform() {
@@ -817,6 +824,12 @@ function showTranscriptProgress(total) {
   }
 
   updateTranscriptProgress(0, total);
+  
+  // Resize waveform after showing progress bar to prevent layout shift
+  setTimeout(() => {
+    resizeTranscriptWaveformVertical();
+    renderTranscriptTimelineSegments();
+  }, 0);
 }
 
 function updateTranscriptProgress(completed, total) {
