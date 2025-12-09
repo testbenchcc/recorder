@@ -239,6 +239,36 @@ function getTranscriptRegionIdAtTime(timeSeconds) {
   return null;
 }
 
+function playTranscriptSegment(segmentIndex) {
+  if (
+    !Array.isArray(transcriptSegments) ||
+    segmentIndex == null ||
+    segmentIndex < 0 ||
+    segmentIndex >= transcriptSegments.length
+  ) {
+    return false;
+  }
+
+  const seg = transcriptSegments[segmentIndex];
+  if (!seg) return false;
+
+  const start = Math.max(0, seg.start);
+  const end = Math.max(start, seg.end);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return false;
+  }
+
+  const regionId = `seg-${segmentIndex}`;
+  setActiveTranscriptRegion(regionId);
+
+  if (!transcriptWavesurfer || typeof transcriptWavesurfer.play !== "function") {
+    return true;
+  }
+
+  transcriptWavesurfer.play(start, end).catch(() => {});
+  return true;
+}
+
 function highlightTranscriptSegmentContent(segmentIndex) {
   const highlighted = document.querySelectorAll(".transcript-segment-highlight");
   highlighted.forEach((el) => el.classList.remove("transcript-segment-highlight"));
@@ -357,11 +387,11 @@ function renderTranscriptTimelineSegments() {
     block.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (regionId) {
+      if (typeof seg.index === "number") {
+        playTranscriptSegment(seg.index);
+      } else if (regionId) {
         setActiveTranscriptRegion(regionId);
       }
-      if (!transcriptWavesurfer) return;
-      transcriptWavesurfer.play(start, end).catch(() => {});
     });
 
     timelineEl.appendChild(block);
@@ -556,11 +586,12 @@ function initTranscriptWaveform(recordingId, segments) {
           if (event && typeof event.stopPropagation === "function") {
             event.stopPropagation();
           }
-          if (region.id) {
+          const segIdx = getTranscriptSegmentIndexFromRegionId(region.id);
+          if (segIdx != null) {
+            playTranscriptSegment(segIdx);
+          } else if (region.id) {
             setActiveTranscriptRegion(region.id);
           }
-          const { start, end } = region;
-          transcriptWavesurfer.play(start, end).catch(() => {});
         };
 
         const handleRegionEnter = (region) => {
@@ -1341,6 +1372,19 @@ window.addEventListener("DOMContentLoaded", () => {
       const nearBottom =
         chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight <= 16;
       transcriptChatAutoScroll = nearBottom;
+    });
+    chatEl.addEventListener("click", (event) => {
+      if (!event) return;
+      const target =
+        typeof event.target?.closest === "function"
+          ? event.target.closest("[data-segment-index]")
+          : null;
+      if (!target || !target.dataset) return;
+      const raw = target.dataset.segmentIndex;
+      const segIdx = Number.parseInt(raw, 10);
+      if (!Number.isFinite(segIdx)) return;
+      event.preventDefault();
+      playTranscriptSegment(segIdx);
     });
   }
   const stopBtn = document.getElementById("transcript-stop-btn");
