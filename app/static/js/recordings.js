@@ -1543,6 +1543,9 @@ window.addEventListener("DOMContentLoaded", () => {
     transcriptModalEl.addEventListener("shown.bs.modal", () => {
       resizeTranscriptWaveformVertical();
     });
+    transcriptModalEl.addEventListener("hidden.bs.modal", () => {
+      stopTranscriptAudio();
+    });
   }
   window.addEventListener("resize", () => {
     resizeTranscriptWaveformVertical();
