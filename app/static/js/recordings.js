@@ -1223,7 +1223,14 @@ async function transcribeRecordingVadSequential(id, forceVad) {
       return;
     }
 
-    initTranscriptWaveform(id, segments);
+    // Only reinitialize waveform if it doesn't exist or segments changed
+    // This preserves the timeline annotations when using cached segments
+    if (!transcriptWavesurfer || transcriptSegments.length !== segments.length) {
+      initTranscriptWaveform(id, segments);
+    } else {
+      // Waveform exists with same segments, just ensure they're set
+      transcriptSegments = normalizeTranscriptSegments(segments);
+    }
 
     showTranscriptProgress(segments.length);
     setTranscriptLoading(loadingEl, false);
@@ -1360,8 +1367,17 @@ async function transcribeRecording(id, overrideFormat, forceFresh) {
 
   resetTranscriptProgressUI();
   resetTranscriptChat();
-  destroyTranscriptWaveform();
-  initTranscriptWaveform(id);
+  
+  // When forceFresh is true with vad_sequential format and we have cached segments,
+  // preserve the waveform and annotations. Otherwise, destroy and reinitialize.
+  const hasCachedVadSegments = normalizedFormat === "vad_sequential" && 
+    getCachedVadSegments(id)?.length > 0;
+  
+  if (!forceFresh || !hasCachedVadSegments) {
+    destroyTranscriptWaveform();
+    initTranscriptWaveform(id);
+  }
+  
   contentEl.style.display = "none";
   contentEl.textContent = "";
 
