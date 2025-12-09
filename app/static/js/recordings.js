@@ -1546,6 +1546,14 @@ window.addEventListener("DOMContentLoaded", () => {
     transcriptModalEl.addEventListener("hidden.bs.modal", () => {
       stopTranscriptAudio();
     });
+    const dismissButtons = transcriptModalEl.querySelectorAll(
+      '[data-bs-dismiss="modal"]',
+    );
+    dismissButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        stopTranscriptAudio();
+      });
+    });
   }
   window.addEventListener("resize", () => {
     resizeTranscriptWaveformVertical();
