@@ -1,6 +1,6 @@
 let browserRecorderWaveSurfer = null;
 let browserRecordPlugin = null;
-let browserScrollingWaveform = false;
+let browserScrollingWaveform = true;
 
 const browserProgressEl = document.querySelector("#progress");
 const browserPauseButton = document.querySelector("#pause");
@@ -256,16 +256,6 @@ function browserAttachEventHandlers() {
           });
       }
     };
-  }
-
-  const scrollingCheckbox = document.querySelector("#scrollingWaveform");
-
-  if (scrollingCheckbox) {
-    scrollingCheckbox.addEventListener("click", (e) => {
-      browserScrollingWaveform = !!e.target.checked;
-      browserCreateWaveSurfer();
-      browserInitMicSelection();
-    });
   }
 }
 
