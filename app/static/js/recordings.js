@@ -23,6 +23,8 @@ let transcriptSkipSilenceMode = false;
 let transcriptWaveTimeupdateUnsub = null;
 let transcriptActiveRegionId = null;
 
+let allRecordings = [];
+
 // In-memory cache of audio blobs for the current browser session.
 // This avoids re-downloading audio when you reopen a transcript.
 const transcriptAudioUrlCache = new Map();
@@ -919,6 +921,97 @@ function appendTranscriptChatMessage(content, segmentIndex, start, end) {
   }
 }
 
+function sortRecordings(sortType) {
+  let sorted = [...allRecordings];
+  
+  switch (sortType) {
+    case 'newest':
+      sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      break;
+    case 'oldest':
+      sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      break;
+    case 'largest':
+      sorted.sort((a, b) => b.size_bytes - a.size_bytes);
+      break;
+    case 'smallest':
+      sorted.sort((a, b) => a.size_bytes - b.size_bytes);
+      break;
+    case 'longest':
+      sorted.sort((a, b) => b.duration_seconds - a.duration_seconds);
+      break;
+    case 'shortest':
+      sorted.sort((a, b) => a.duration_seconds - b.duration_seconds);
+      break;
+    case 'transcribed':
+      sorted = sorted.filter(item => transcriptVadSegmentsCache.has(item.id));
+      break;
+  }
+  
+  renderRecordings(sorted);
+}
+
+function updateBulkActionsBar() {
+  const checkboxes = document.querySelectorAll(".recording-card-checkbox");
+  const checked = Array.from(checkboxes).filter(cb => cb.checked);
+  const count = checked.length;
+  
+  const bulkActionsBar = document.getElementById("bulk-actions-bar");
+  const selectedCount = document.getElementById("selected-count");
+  const selectAllCheckbox = document.getElementById("select-all-checkbox");
+  
+  if (count > 0) {
+    bulkActionsBar.classList.remove("d-none");
+  } else {
+    bulkActionsBar.classList.add("d-none");
+  }
+  
+  if (selectedCount) {
+    selectedCount.textContent = count;
+  }
+  
+  if (selectAllCheckbox) {
+    selectAllCheckbox.checked = count > 0 && count === checkboxes.length;
+    selectAllCheckbox.indeterminate = count > 0 && count < checkboxes.length;
+  }
+}
+
+async function bulkDeleteRecordings() {
+  const checkboxes = document.querySelectorAll(".recording-card-checkbox:checked");
+  const ids = Array.from(checkboxes).map(cb => cb.dataset.recordingId);
+  
+  if (ids.length === 0) return;
+  
+  const confirmed = confirm(`Are you sure you want to delete ${ids.length} recording(s)? This cannot be undone.`);
+  if (!confirmed) return;
+  
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (const id of ids) {
+    try {
+      const res = await fetch(`/recordings/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        successCount++;
+      } else {
+        failCount++;
+      }
+    } catch (err) {
+      console.error(`Failed to delete recording ${id}`, err);
+      failCount++;
+    }
+  }
+  
+  if (successCount > 0) {
+    setRecordingsMessage(`Successfully deleted ${successCount} recording(s)`, "success");
+  }
+  if (failCount > 0) {
+    setRecordingsMessage(`Failed to delete ${failCount} recording(s)`, "danger");
+  }
+  
+  await loadRecordings();
+}
+
 async function loadRecordings() {
   try {
     const res = await fetch("/recordings?limit=200");
@@ -927,25 +1020,48 @@ async function loadRecordings() {
       return;
     }
     const data = await res.json();
-    const grid = document.getElementById("recordings-grid");
-    grid.innerHTML = "";
-
-    if (!data.items || data.items.length === 0) {
-      document.getElementById("recordings-empty").style.display = "block";
-      return;
-    }
-
-    document.getElementById("recordings-empty").style.display = "none";
-
-    for (const item of data.items) {
-      const card = createRecordingCard(item);
-      grid.appendChild(card);
-      
-      loadCardWaveform(item.id, card);
-    }
+    allRecordings = data.items || [];
+    
+    renderRecordings(allRecordings);
   } catch (err) {
     console.error(err);
     setRecordingsMessage("Error loading recordings", "danger");
+  }
+}
+
+function renderRecordings(recordings) {
+  const grid = document.getElementById("recordings-grid");
+  grid.innerHTML = "";
+
+  if (!recordings || recordings.length === 0) {
+    document.getElementById("recordings-empty").style.display = "block";
+    return;
+  }
+
+  document.getElementById("recordings-empty").style.display = "none";
+
+  for (const item of recordings) {
+    const card = createRecordingCard(item);
+    grid.appendChild(card);
+    
+    loadCardWaveform(item.id, card);
+    
+    const checkbox = card.querySelector(".recording-card-checkbox");
+    if (checkbox) {
+      checkbox.addEventListener("change", (e) => {
+        e.stopPropagation();
+        if (e.target.checked) {
+          card.classList.add("selected");
+        } else {
+          card.classList.remove("selected");
+        }
+        updateBulkActionsBar();
+      });
+      
+      checkbox.addEventListener("click", (e) => {
+        e.stopPropagation();
+      });
+    }
   }
 }
 
@@ -960,6 +1076,7 @@ function createRecordingCard(item) {
   const sizeText = formatFileSize(item.size_bytes);
 
   card.innerHTML = `
+    <input type="checkbox" class="form-check-input recording-card-checkbox" data-recording-id="${item.id}">
     <div class="recording-card-header">
       <div class="recording-card-waveform" id="waveform-${item.id}"></div>
       <div class="recording-card-title" title="${fileName}">${fileName}</div>
@@ -1850,5 +1967,47 @@ window.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", () => {
     resizeTranscriptWaveformVertical();
   });
+  
+  const sortSelect = document.getElementById("sort-select");
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      sortRecordings(sortSelect.value);
+    });
+  }
+  
+  const selectAllCheckbox = document.getElementById("select-all-checkbox");
+  if (selectAllCheckbox) {
+    selectAllCheckbox.addEventListener("change", (e) => {
+      const checkboxes = document.querySelectorAll(".recording-card-checkbox");
+      checkboxes.forEach(cb => cb.checked = e.target.checked);
+      updateBulkActionsBar();
+    });
+  }
+  
+  const selectAllBtn = document.getElementById("select-all-btn");
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", () => {
+      const checkboxes = document.querySelectorAll(".recording-card-checkbox");
+      checkboxes.forEach(cb => cb.checked = true);
+      updateBulkActionsBar();
+    });
+  }
+  
+  const selectNoneBtn = document.getElementById("select-none-btn");
+  if (selectNoneBtn) {
+    selectNoneBtn.addEventListener("click", () => {
+      const checkboxes = document.querySelectorAll(".recording-card-checkbox");
+      checkboxes.forEach(cb => cb.checked = false);
+      updateBulkActionsBar();
+    });
+  }
+  
+  const bulkDeleteBtn = document.getElementById("bulk-delete-btn");
+  if (bulkDeleteBtn) {
+    bulkDeleteBtn.addEventListener("click", () => {
+      bulkDeleteRecordings();
+    });
+  }
+  
   loadRecordings();
 });
