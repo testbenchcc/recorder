@@ -378,11 +378,11 @@
   }
 
   .recording-card {
-    border: 1px solid #dee2e6;
+    border: 1px solid var(--border-color);
     border-radius: 0.5rem;
     overflow: hidden;
     transition: all 0.2s ease;
-    background: white;
+    background: var(--card-bg);
     cursor: pointer;
     display: flex;
     flex-direction: column;
@@ -391,9 +391,9 @@
   }
 
   .recording-card.selected {
-    border-color: #0d6efd;
+    border-color: var(--purple-start);
     border-width: 2px;
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
   }
 
   .recording-card-checkbox {
@@ -408,8 +408,8 @@
 
   .recording-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-    border-color: #0d6efd;
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+    border-color: var(--purple-start);
   }
 
   .recording-card-header {
@@ -464,7 +464,7 @@
   .recording-info-label {
     font-size: 0.7rem;
     text-transform: uppercase;
-    color: #6c757d;
+    color: var(--text-secondary);
     font-weight: 600;
     letter-spacing: 0.5px;
     margin-bottom: 0.25rem;
@@ -472,7 +472,7 @@
 
   .recording-info-value {
     font-size: 0.9rem;
-    color: #212529;
+    color: var(--text-primary);
     font-weight: 500;
   }
 
@@ -481,7 +481,7 @@
     gap: 0.5rem;
     margin-top: auto;
     padding-top: 0.75rem;
-    border-top: 1px solid #e9ecef;
+    border-top: 1px solid var(--border-color);
   }
 
   .recording-card-actions .btn {
@@ -528,7 +528,7 @@
     width: 80px;
     height: 100%;
     min-height: 200px;
-    background: #f8f9fa;
+    background: var(--input-bg);
     overflow: hidden;
     display: flex;
     align-items: flex-start;
@@ -543,8 +543,8 @@
   }
 
   #transcript-modal #transcript-waveform ::part(region) {
-    background-color: rgba(13, 110, 253, 0.12);
-    border: 1px solid rgba(13, 110, 253, 0.4);
+    background-color: rgba(102, 126, 234, 0.15);
+    border: 1px solid rgba(102, 126, 234, 0.5);
     box-sizing: border-box;
   }
 
@@ -553,13 +553,13 @@
   }
 
   #transcript-modal .transcript-waveform-segment.active {
-    outline: 2px solid #0d6efd;
-    box-shadow: inset 0 0 0 1px rgba(13, 110, 253, 0.3);
+    outline: 2px solid var(--purple-start);
+    box-shadow: inset 0 0 0 1px rgba(102, 126, 234, 0.3);
   }
 
   #transcript-modal .transcript-segment-highlight {
-    outline: 2px solid #0d6efd;
-    box-shadow: inset 0 0 0 1px rgba(13, 110, 253, 0.15);
+    outline: 2px solid var(--purple-start);
+    box-shadow: inset 0 0 0 1px rgba(102, 126, 234, 0.15);
   }
 
   #transcript-modal .transcript-content-cell {

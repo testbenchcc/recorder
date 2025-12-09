@@ -126,26 +126,30 @@ Browser recordings are uploaded to the server, converted to WAV (using `ffmpeg`)
 
 ## User Interface
 
-The application features a **unified modern design** across all pages with consistent styling:
+The application features a **modern dark theme** with vibrant purple accents across all pages:
 
 ### Design System
+- **Dark Theme**: Deep navy background (#1a1a2e) with card backgrounds (#1f1f2e) for reduced eye strain
+- **Purple Gradient**: Signature gradient (purple to violet) used in navigation, card headers, and primary buttons
+- **Modern Typography**: Light text on dark backgrounds with muted secondary colors for hierarchy
 - **Compact Layout**: Fluid containers with `px-3 py-3` spacing for efficient use of screen space
-- **Modern Typography**: Small, compact headers (h4) and labels for a clean, professional look
 - **Flexible Components**: Bootstrap 5 with `gap-2` spacing, small form controls (`form-select-sm`, `btn-sm`)
 - **Responsive Design**: Adaptive layouts that work seamlessly from mobile to desktop
-- **Consistent Actions**: Primary and outline buttons with uniform sizing and styling
+- **Consistent Actions**: Purple gradient primary buttons with hover effects and uniform sizing
 
 ### Recordings Page
 The **Recordings** page showcases the design system with:
 - **Responsive Grid**: Automatically adjusts from 1 to 5 columns based on screen width
 - **Visual Timeline**: Each card displays a mini audio waveform with VAD (Voice Activity Detection) segments in the header
-- **Color-Coded Cards**: Beautiful gradient backgrounds with hover effects
+- **Purple Gradient Headers**: Beautiful gradient backgrounds (#667eea to #764ba2) with hover effects
 - **Quick Actions**: Click any card to open the transcription modal, or use the action buttons for Play, Download, Rename, and Delete
 - **Organized Info**: Recording details (date, time, duration, size) displayed in a clean grid layout
+- **Dark Cards**: Elevated card design with subtle borders that pop against the dark background
 
 ### Dashboard & Configuration
 The **Home** and **Configuration** pages follow the same design principles:
-- Clean card-based layouts with consistent spacing
+- Dark card-based layouts with purple gradient headers
+- Dark input fields with purple focus states
 - Small, efficient form controls and buttons
 - Compact headers and labels for maximum content density
 - Responsive layouts that adapt to any screen size
