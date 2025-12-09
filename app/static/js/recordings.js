@@ -43,6 +43,15 @@ if (typeof window !== "undefined") {
   });
 }
 
+function resizeTranscriptWaveformVertical() {
+  const outerEl = document.getElementById("transcript-waveform");
+  const innerEl = document.getElementById("transcript-waveform-inner");
+  if (!outerEl || !innerEl) return;
+  const height = outerEl.clientHeight;
+  if (!height) return;
+  innerEl.style.width = `${height}px`;
+}
+
 function getTranscriptAudioStreamUrl(recordingId) {
   return `/recordings/${recordingId}/stream`;
 }
@@ -110,6 +119,8 @@ function ensureTranscriptWaveformStructure() {
     innerEl.id = "transcript-waveform-inner";
     outerEl.appendChild(innerEl);
   }
+
+  resizeTranscriptWaveformVertical();
 
   return {
     container: innerEl,
@@ -1227,5 +1238,14 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+  const transcriptModalEl = document.getElementById("transcript-modal");
+  if (transcriptModalEl) {
+    transcriptModalEl.addEventListener("shown.bs.modal", () => {
+      resizeTranscriptWaveformVertical();
+    });
+  }
+  window.addEventListener("resize", () => {
+    resizeTranscriptWaveformVertical();
+  });
   loadRecordings();
 });
