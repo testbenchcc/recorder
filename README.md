@@ -322,3 +322,71 @@ cd ~/whisper.cpp/build/bin
 ./whisper-cli -m ~/whisper.cpp/models/ggml-base.en.bin \
   -f "/path/to/your.wav" -otxt -of whisper_output
 ```
+
+## Add SMB share - Offloading audio
+
+You can use a network share (for example via SMB/CIFS) as a **secondary storage
+location** for recordings. The recorder will always write new audio to the
+local filesystem first, then a background worker will copy files to the
+secondary location when it is mounted and reachable.
+
+Create your credentials file
+```bash
+sudo nano .smbcred
+sudo chown pi:pi /home/pi/.smbcred
+chmod 600 /home/pi/.smbcred
+```
+
+Contents of `.smbcred`
+```text
+username=pi
+password=<your password>
+vers=3.0
+```
+
+Create the Samba share
+
+```bash
+mkdir /mnt/smb
+mkdir /mnt/smb/recordings
+sudo chown -R pi:pi /mnt/smb 
+sudo chmod -R 775 /mnt/smb
+sudo mount -t cifs //192.168.1.5/StoragePool/recordings /mnt/smb/recordings -o credentials=/home/pi/.smbcred,uid=1000,gid=1000,dir_mode=0775,file_mode=0664,vers=3.0
+
+### Recorder storage configuration
+
+The backend now distinguishes between a **local recordings root** and an
+optional **secondary recordings root**. All new recordings are written to the
+local root; a background worker periodically:
+
+- Checks if the secondary root is enabled and mounted
+- Copies any local-only recordings to the secondary root
+- Updates a small SQLite index (`storage.db`) so the app knows whether each
+  recording exists locally, remotely, or in both places
+- Optionally removes the local copy once it has been synced
+
+Configuration is controlled via environment variables (all prefixed with
+`RECORDER_`):
+
+- `RECORDER_RECORDING_DIR` – legacy root (default `recordings/`)
+- `RECORDER_RECORDINGS_LOCAL_ROOT` – optional explicit local root. When unset,
+  the app falls back to `RECORDER_RECORDING_DIR`.
+- `RECORDER_RECORDINGS_SECONDARY_ROOT` – path to the mounted secondary
+  recordings folder (for example `/mnt/smb/recordings`).
+- `RECORDER_SECONDARY_STORAGE_ENABLED` – set to `true` to enable the secondary
+  backend. When disabled or when the path is not mounted, the worker is a
+  no-op.
+- `RECORDER_KEEP_LOCAL_AFTER_SYNC` – when `true` (default) the local copy is
+  kept even after syncing to secondary storage; when `false`, the local file
+  is deleted after a successful copy.
+
+The `/recordings` API now returns a **unified list** of recordings from both
+locations. Each item includes:
+
+- `storage_location`: one of `local`, `remote`, or `both`
+- `accessible`: whether at least one copy is currently readable on disk
+
+The Recordings page in the web UI shows all entries regardless of current
+availability, disables playback/streaming controls for offline items, and still
+surfaces any cached VAD or transcript data.
+```

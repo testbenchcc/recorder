@@ -41,6 +41,9 @@
 - [x] Implement storage accounting: convert free disk space → remaining recording time, plus per-file metadata (duration, size, created_at).
 - [x] Ensure recordings are flushed to disk safely and survive reboots/UPS events (avoid temp dirs).
 - [x] Output: backend endpoints for start/stop recording; internal module for recording management.
+ - [x] Introduce a storage index and abstraction that tracks recordings across
+       a local root and an optional secondary root (e.g., SMB share), including
+       per-recording existence flags and local-retention policy.
 
 ---
 
@@ -73,6 +76,9 @@
   - [x] Show duration, created time, and size.
   - [x] **Modern card-based layout**: Adaptive grid (1-5 columns) with visual waveforms and VAD segments.
   - [x] **Enhanced UX**: Click cards to open transcription modal, gradient backgrounds, hover effects.
+  - [x] Show unified recordings from local and secondary storage with
+       availability status; disable playback controls for recordings that are
+       currently offline while still surfacing any cached metadata.
 - [x] Ensure responsive layout with Bootstrap 5, minimal but clear styling.
 - [x] Output: usable browser UI covering all core flows.
 

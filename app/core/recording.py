@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from app.core.config import settings
+from app.core.storage import get_local_root, resolve_recording_path, scan_filesystem
 
 
 class RecordingError(Exception):
@@ -66,7 +67,7 @@ def _validate_recording_id(recording_id: str) -> str:
 
 
 def _list_recording_files() -> List[Path]:
-    root = Path(settings.recording_dir)
+    root = get_local_root()
     if not root.exists():
         return []
     paths: List[Path] = []
@@ -113,15 +114,16 @@ def list_recordings() -> List[RecordingMetadata]:
 
 def get_recording(recording_id: str) -> Optional[RecordingMetadata]:
     recording_id = _validate_recording_id(recording_id)
-    root = Path(settings.recording_dir)
-    if not root.exists():
+
+    # Refresh the storage index before resolving the path so that
+    # recordings discovered on disk (local or secondary) are visible.
+    scan_filesystem()
+
+    path = resolve_recording_path(recording_id)
+    if path is None:
         return None
 
-    for path in root.rglob("*.wav"):
-        meta = _metadata_for_path(path)
-        if meta is not None and meta.id == recording_id:
-            return meta
-    return None
+    return _metadata_for_path(path)
 
 
 def delete_recording(recording_id: str) -> bool:
@@ -201,7 +203,7 @@ class RecordingManager:
         self._process: Optional[subprocess.Popen] = None
 
     def _build_id_and_path(self) -> RecordingInfo:
-        root = Path(settings.recording_dir)
+        root = get_local_root()
         now = datetime.now(timezone.utc)
         day_dir = root / now.strftime("%Y") / now.strftime("%m") / now.strftime("%d")
         day_dir.mkdir(parents=True, exist_ok=True)
@@ -223,7 +225,7 @@ class RecordingManager:
     def _ensure_space(self, duration_seconds: int) -> None:
         enforce_retention()
 
-        recording_dir = Path(settings.recording_dir)
+        recording_dir = get_local_root()
         recording_dir.mkdir(parents=True, exist_ok=True)
         usage = shutil.disk_usage(str(recording_dir))
         free_bytes = usage.free

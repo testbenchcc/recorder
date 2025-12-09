@@ -1091,7 +1091,12 @@ function renderRecordings(recordings) {
     const card = createRecordingCard(item);
     grid.appendChild(card);
     
-    loadCardWaveform(item.id, card);
+    // Only attempt to load waveforms when the recording is currently
+    // accessible for playback. This avoids repeated 404s for entries
+    // whose files are offline or on an unmounted backend.
+    if (item.accessible !== false) {
+      loadCardWaveform(item.id, card);
+    }
     
     const checkbox = card.querySelector(".recording-card-checkbox");
     if (checkbox) {
@@ -1117,10 +1122,24 @@ function createRecordingCard(item) {
   card.className = "recording-card";
   card.dataset.recordingId = item.id;
 
-  const fileName = item.name || item.path.split("/").slice(-1)[0];
+  const fileName = item.name || (item.path || "").split("/").slice(-1)[0];
   const created = new Date(item.created_at);
   const durationText = formatDuration(item.duration_seconds);
   const sizeText = formatFileSize(item.size_bytes);
+  const accessible = item.accessible !== false;
+  const storageLocation = (item.storage_location || "local").toLowerCase();
+  let storageLabel = "Local";
+  if (storageLocation === "both") {
+    storageLabel = "Local + Secondary";
+  } else if (storageLocation === "remote") {
+    storageLabel = "Secondary only";
+  }
+  const statusLabel = accessible ? "Available" : "Offline";
+
+  const playDisabledAttr = accessible ? "" : "disabled";
+  const playDisabledClass = accessible ? "" : " disabled";
+  const downloadDisabledAttr = accessible ? "" : "aria-disabled=\"true\" tabindex=\"-1\"";
+  const downloadDisabledClass = accessible ? "" : " disabled";
 
   card.innerHTML = `
     <input type="checkbox" class="form-check-input recording-card-checkbox" data-recording-id="${item.id}">
@@ -1146,6 +1165,14 @@ function createRecordingCard(item) {
           <div class="recording-info-label">Size</div>
           <div class="recording-info-value">${sizeText}</div>
         </div>
+        <div class="recording-info-item">
+          <div class="recording-info-label">Storage</div>
+          <div class="recording-info-value">${storageLabel}</div>
+        </div>
+        <div class="recording-info-item">
+          <div class="recording-info-label">Status</div>
+          <div class="recording-info-value">${statusLabel}</div>
+        </div>
       </div>
       <div class="recording-card-actions">
         <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); transcribeRecording('${item.id}')">
@@ -1161,8 +1188,8 @@ function createRecordingCard(item) {
             </svg>
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><button class="dropdown-item" onclick="event.stopPropagation(); playRecording('${item.id}')">Play</button></li>
-            <li><a class="dropdown-item" href="/recordings/${item.id}/stream" download="${fileName}" onclick="event.stopPropagation()">Download</a></li>
+            <li><button class="dropdown-item${playDisabledClass}" ${playDisabledAttr} onclick="event.stopPropagation(); playRecording('${item.id}')">Play</button></li>
+            <li><a class="dropdown-item${downloadDisabledClass}" ${downloadDisabledAttr} href="/recordings/${item.id}/stream" download="${fileName}" onclick="event.stopPropagation()">Download</a></li>
             <li><button class="dropdown-item" onclick="event.stopPropagation(); renameRecording('${item.id}')">Rename</button></li>
             <li><hr class="dropdown-divider"></li>
             <li><button class="dropdown-item text-danger" onclick="event.stopPropagation(); deleteRecording('${item.id}')">Delete</button></li>

@@ -23,6 +23,13 @@ from app.core.cache import (
     upsert_cache_entry,
 )
 from app.core.config import settings
+from app.core.storage import (
+    get_local_root,
+    ensure_recording_row,
+    get_storage_state,
+    list_unified_recordings,
+    resolve_recording_path,
+)
 from app.core.status import get_status
 from app.core.recording import (
     RecordingBusyError,
@@ -444,6 +451,10 @@ def config() -> dict:
         "channels": settings.channels,
         "device": settings.alsa_device,
         "recording_dir": settings.recording_dir,
+        "recordings_local_root": settings.get_local_recordings_root(),
+        "recordings_secondary_root": settings.recordings_secondary_root,
+        "secondary_storage_enabled": settings.secondary_storage_enabled,
+        "keep_local_after_sync": settings.keep_local_after_sync,
         "max_single_recording_seconds": settings.max_single_recording_seconds,
         "retention_hours": settings.retention_hours,
     }
@@ -600,6 +611,16 @@ def stop_recording() -> dict:
     if info is None:
         return {"stopped": False, "reason": "no_active_recording"}
 
+    # Register the finished recording in the storage index using a
+    # relative path under the local recordings root.
+    try:
+        local_root = get_local_root()
+        rel_path = str(Path(info.path).relative_to(local_root))
+    except Exception:
+        rel_path = Path(info.path).name
+
+    ensure_recording_row(info.id, rel_path)
+
     return {
         "stopped": True,
         "id": info.id,
@@ -617,7 +638,7 @@ async def upload_recording(file: UploadFile = File(...)) -> dict:
     if not contents:
         raise HTTPException(status_code=400, detail="Uploaded audio file is empty")
 
-    root = Path(settings.recording_dir)
+    root = get_local_root()
     now = datetime.now(timezone.utc)
     day_dir = root / now.strftime("%Y") / now.strftime("%m") / now.strftime("%d")
     day_dir.mkdir(parents=True, exist_ok=True)
@@ -675,6 +696,14 @@ async def upload_recording(file: UploadFile = File(...)) -> dict:
             detail="Failed to convert uploaded audio to WAV format",
         )
 
+    # Track the uploaded recording in the storage index.
+    try:
+        rel_path = str(out_path.relative_to(root))
+    except Exception:
+        rel_path = out_path.name
+
+    ensure_recording_row(recording_id, rel_path)
+
     meta = get_recording(recording_id)
     if meta is None:
         raise HTTPException(status_code=500, detail="Failed to index uploaded recording")
@@ -691,18 +720,21 @@ async def upload_recording(file: UploadFile = File(...)) -> dict:
 
 @router.get("/recordings")
 def list_recordings_endpoint(limit: int = 50, offset: int = 0) -> dict:
-    items = list_recordings()
+    items = list_unified_recordings()
     items_sorted = sorted(items, key=lambda r: r.created_at, reverse=True)
     sliced = items_sorted[offset : offset + limit]
     return {
         "items": [
             {
                 "id": r.id,
-                "path": str(r.path),
-                "name": _display_name(r.path),
+                "path": str(r.absolute_path) if r.absolute_path is not None else r.relative_path,
+                "relative_path": r.relative_path,
+                "name": _display_name(Path(r.absolute_path or r.relative_path)),
                 "size_bytes": r.size_bytes,
                 "duration_seconds": r.duration_seconds,
                 "created_at": r.created_at.isoformat(),
+                "storage_location": r.storage_location,
+                "accessible": r.accessible,
             }
             for r in sliced
         ],
@@ -718,6 +750,10 @@ def get_recording_endpoint(recording_id: str) -> dict:
     if meta is None:
         raise HTTPException(status_code=404, detail="Recording not found")
 
+    state = get_storage_state(recording_id)
+    storage_location = state.storage_location if state is not None else "none"
+    accessible = resolve_recording_path(recording_id) is not None
+
     return {
         "id": meta.id,
         "path": str(meta.path),
@@ -725,6 +761,8 @@ def get_recording_endpoint(recording_id: str) -> dict:
         "size_bytes": meta.size_bytes,
         "duration_seconds": meta.duration_seconds,
         "created_at": meta.created_at.isoformat(),
+        "storage_location": storage_location,
+        "accessible": accessible,
     }
 
 

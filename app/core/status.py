@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 from app.core.config import settings
+from app.core.storage import get_local_root
 from app.core.recording import list_recordings, manager as recording_manager
 
 
@@ -20,7 +21,7 @@ def _minutes_remaining(free_bytes: int) -> float:
 
 
 def get_status() -> dict:
-    recording_path = Path(settings.recording_dir)
+    recording_path = get_local_root()
     recording_path.mkdir(parents=True, exist_ok=True)
 
     free_bytes = _disk_free_bytes(str(recording_path))
