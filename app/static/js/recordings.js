@@ -183,17 +183,17 @@ function renderTranscriptTimelineSegments() {
       return;
     }
 
-    const leftPct = (start / totalDuration) * 100;
-    const widthPct = (span / totalDuration) * 100;
+    const topPct = (start / totalDuration) * 100;
+    const heightPct = (span / totalDuration) * 100;
     const color = regionColors[idx % regionColors.length];
 
     const block = document.createElement("div");
     block.className = "transcript-waveform-segment";
     block.style.position = "absolute";
-    block.style.top = "0";
-    block.style.bottom = "0";
-    block.style.left = `${leftPct}%`;
-    block.style.width = `${Math.max(0.5, widthPct)}%`;
+    block.style.left = "0";
+    block.style.right = "0";
+    block.style.top = `${topPct}%`;
+    block.style.height = `${Math.max(0.5, heightPct)}%`;
     block.style.backgroundColor = color;
     block.style.cursor = "pointer";
 
