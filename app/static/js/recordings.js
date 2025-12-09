@@ -421,6 +421,7 @@ function renderTranscriptTimelineSegments() {
   }
 
   const timelineEl = transcriptWaveformTimelineEl;
+  const markerEl = transcriptWaveformMarkerEl;
   timelineEl.innerHTML = "";
 
   // Use the actual audio duration from WaveSurfer if available,
@@ -497,6 +498,11 @@ function renderTranscriptTimelineSegments() {
 
     timelineEl.appendChild(block);
   });
+
+  // Ensure playback marker is rendered on top of segments
+  if (markerEl) {
+    timelineEl.appendChild(markerEl);
+  }
 
   setActiveTranscriptRegion(transcriptActiveRegionId);
 }

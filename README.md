@@ -154,6 +154,8 @@ The **Home** and **Configuration** pages follow the same design principles:
 - Compact headers and labels for maximum content density
 - Responsive layouts that adapt to any screen size
 
+The **Transcription** modal also includes a vertical VAD timeline with a white playback marker line that moves as audio plays, making it easy to see the current position at a glance.
+
 > **Tip:** The transcription modal now intelligently caches data:
 > - **Opening the modal**: Loads cached transcriptions and VAD segments when available, avoiding unnecessary API calls
 > - **Resend button**: Re-runs transcription while preserving the waveform visualization and timeline annotations
