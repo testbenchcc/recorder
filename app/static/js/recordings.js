@@ -640,6 +640,10 @@ function appendTranscriptChatMessage(content, segmentIndex, start, end) {
 
 async function loadRecordings() {
   try {
+    const tableWrapper = document.getElementById("recordings-table-wrapper");
+    if (tableWrapper) {
+      tableWrapper.classList.remove("dropdown-open");
+    }
     const res = await fetch("/recordings?limit=200");
     if (!res.ok) {
       setRecordingsMessage("Failed to load recordings", "danger");
@@ -1162,6 +1166,17 @@ async function deleteRecording(id) {
 
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("refresh-btn").addEventListener("click", loadRecordings);
+  const recordingsTableWrapper = document.getElementById("recordings-table-wrapper");
+  if (recordingsTableWrapper) {
+    const clearDropdownOverflow = () => {
+      recordingsTableWrapper.classList.remove("dropdown-open");
+    };
+    recordingsTableWrapper.addEventListener("show.bs.dropdown", () => {
+      recordingsTableWrapper.classList.add("dropdown-open");
+    });
+    recordingsTableWrapper.addEventListener("hide.bs.dropdown", clearDropdownOverflow);
+    recordingsTableWrapper.addEventListener("hidden.bs.dropdown", clearDropdownOverflow);
+  }
   const retryBtn = document.getElementById("transcript-retry-btn");
   if (retryBtn) {
     retryBtn.addEventListener("click", (event) => {

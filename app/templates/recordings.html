@@ -12,7 +12,7 @@
       </div>
       <div class="card-body">
         <div id="recordings-empty" class="text-muted">No recordings yet.</div>
-        <div class="table-responsive">
+        <div class="table-responsive" id="recordings-table-wrapper">
           <table class="table table-sm align-middle" id="recordings-table" style="display: none;">
             <thead>
               <tr>
@@ -312,6 +312,18 @@
 
 {% block scripts %}
 <style>
+  #recordings-table-wrapper {
+    position: relative;
+  }
+
+  #recordings-table-wrapper.dropdown-open {
+    overflow: visible;
+  }
+
+  #recordings-table-wrapper .dropdown-menu {
+    z-index: 1060;
+  }
+
   #transcript-modal .transcript-layout {
     display: grid;
     grid-template-columns: 80px minmax(0, 1fr);
