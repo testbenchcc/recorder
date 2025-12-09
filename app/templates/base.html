@@ -12,25 +12,25 @@
     />
     <style>
       :root {
-        --bg-primary: #28536b;
-        --bg-secondary: #270722;
-        --bg-tertiary: #43281c;
-        --text-primary: #e4e4e7;
-        --text-secondary: #a1a1aa;
-        --text-muted: #71717a;
-        --border-color: #9a6a3a;
+        --base: #1e1e2e;
+        --surface0: #313244;
+        --surface1: #45475a;
+        --surface2: #585b70;
+        --text: #cdd6f4;
+        --subtext1: #bac2de;
+        --overlay2: #9399b2;
+        --bg-primary: var(--base);
+        --bg-secondary: var(--surface0);
+        --bg-tertiary: var(--surface2);
+        --text-primary: var(--text);
+        --text-secondary: var(--subtext1);
+        --text-muted: var(--overlay2);
+        --border-color: var(--surface1);
         --purple-start: #c86b23;
         --purple-end: #f39237;
-        --card-bg: #270722;
-        --input-bg: #43281c;
+        --card-bg: var(--surface0);
+        --input-bg: var(--surface1);
         /* Catppuccin-style base tokens mapped onto our palette */
-        --base: var(--bg-primary);
-        --surface0: var(--card-bg);
-        --surface1: var(--input-bg);
-        --surface2: var(--bg-tertiary);
-        --text: var(--text-primary);
-        --subtext1: var(--text-secondary);
-        --overlay2: var(--text-muted);
       }
 
       [data-webtui-theme|=catppuccin] {
