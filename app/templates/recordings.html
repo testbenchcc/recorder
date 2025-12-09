@@ -346,13 +346,14 @@
     overflow: hidden;
     display: flex;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   #transcript-modal #transcript-waveform-inner {
     height: 80px;
     transform-origin: top left;
     transform: rotate(-90deg) translateX(-100%);
+    flex-shrink: 0; /* keep full length after rotation */
   }
 
   #transcript-modal .transcript-content-cell {
