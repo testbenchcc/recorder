@@ -342,6 +342,7 @@ function initTranscriptWaveform(recordingId, segments) {
       transcriptWavesurfer = WaveSurfer.create({
         container,
         height: 80,
+        minPxPerSec: 0,
         waveColor: "rgba(0, 0, 0, 0.25)",
         progressColor: "#0d6efd",
         cursorColor: "#0d6efd",
