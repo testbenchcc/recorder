@@ -40,6 +40,22 @@ const defaultConfig = {
     accent_start: "#c86b23",
     accent_end: "#f39237",
   },
+  button: {
+    min_interval_sec: 0.8,
+  },
+  vad_binary: {
+    binary_path: "vad-speech-segments",
+    model_path: "",
+  },
+  storage: {
+    local_root: "recordings",
+    secondary_root: "",
+    secondary_enabled: false,
+    keep_local_after_sync: true,
+  },
+  debug: {
+    vad_segments: false,
+  },
   default_max_duration_seconds: 7200,
 };
 
@@ -190,6 +206,64 @@ function applyDefaultMaxDuration(config) {
   }
 }
 
+function applyButton(config) {
+  const cfg = {
+    ...defaultConfig.button,
+    ...(config.button || {}),
+  };
+
+  const minIntervalEl = document.getElementById("button-min-interval-sec");
+  if (!minIntervalEl) return;
+
+  minIntervalEl.value = cfg.min_interval_sec;
+}
+
+function applyVadBinary(config) {
+  const cfg = {
+    ...defaultConfig.vad_binary,
+    ...(config.vad_binary || {}),
+  };
+
+  const binaryPathEl = document.getElementById("vad-binary-path");
+  const modelPathEl = document.getElementById("vad-binary-model-path");
+
+  if (!binaryPathEl) return;
+
+  binaryPathEl.value = cfg.binary_path || "";
+  modelPathEl.value = cfg.model_path || "";
+}
+
+function applyStorage(config) {
+  const cfg = {
+    ...defaultConfig.storage,
+    ...(config.storage || {}),
+  };
+
+  const localRootEl = document.getElementById("storage-local-root");
+  const secondaryRootEl = document.getElementById("storage-secondary-root");
+  const secondaryEnabledEl = document.getElementById("storage-secondary-enabled");
+  const keepLocalEl = document.getElementById("storage-keep-local-after-sync");
+
+  if (!localRootEl) return;
+
+  localRootEl.value = cfg.local_root || "";
+  secondaryRootEl.value = cfg.secondary_root || "";
+  secondaryEnabledEl.checked = !!cfg.secondary_enabled;
+  keepLocalEl.checked = !!cfg.keep_local_after_sync;
+}
+
+function applyDebug(config) {
+  const cfg = {
+    ...defaultConfig.debug,
+    ...(config.debug || {}),
+  };
+
+  const vadSegmentsEl = document.getElementById("debug-vad-segments");
+  if (!vadSegmentsEl) return;
+
+  vadSegmentsEl.checked = !!cfg.vad_segments;
+}
+
 async function loadConfig() {
   try {
     const res = await fetch("/ui/config");
@@ -199,6 +273,10 @@ async function loadConfig() {
       applyWhisper({});
       applyVad({});
       applyDefaultMaxDuration({});
+      applyButton({});
+      applyVadBinary({});
+      applyStorage({});
+      applyDebug({});
       return;
     }
     const data = await res.json();
@@ -207,6 +285,10 @@ async function loadConfig() {
     applyVad(data || {});
     applyDefaultMaxDuration(data || {});
     applyTheme(data || {});
+    applyButton(data || {});
+    applyVadBinary(data || {});
+    applyStorage(data || {});
+    applyDebug(data || {});
   } catch (err) {
     console.error(err);
     setConfigMessage("Error loading configuration", "danger");
@@ -215,6 +297,10 @@ async function loadConfig() {
     applyVad({});
     applyDefaultMaxDuration({});
     applyTheme({});
+    applyButton({});
+    applyVadBinary({});
+    applyStorage({});
+    applyDebug({});
   }
 }
 
@@ -251,6 +337,14 @@ async function saveConfig(e) {
   const themeOverlay2El = document.getElementById("theme-overlay2");
   const themeAccentStartEl = document.getElementById("theme-accent-start");
   const themeAccentEndEl = document.getElementById("theme-accent-end");
+  const buttonMinIntervalEl = document.getElementById("button-min-interval-sec");
+  const vadBinaryPathEl = document.getElementById("vad-binary-path");
+  const vadBinaryModelPathEl = document.getElementById("vad-binary-model-path");
+  const storageLocalRootEl = document.getElementById("storage-local-root");
+  const storageSecondaryRootEl = document.getElementById("storage-secondary-root");
+  const storageSecondaryEnabledEl = document.getElementById("storage-secondary-enabled");
+  const storageKeepLocalEl = document.getElementById("storage-keep-local-after-sync");
+  const debugVadSegmentsEl = document.getElementById("debug-vad-segments");
 
   const defaultMaxDuration = Number.parseInt(
     defaultMaxDurationEl.value.trim(),
@@ -292,6 +386,10 @@ async function saveConfig(e) {
   );
   const rawVadOverlap = Number.parseFloat(
     (vadOverlapEl.value || "").trim(),
+  );
+
+  const rawButtonMinInterval = Number.parseFloat(
+    (buttonMinIntervalEl.value || "").trim(),
   );
 
   const payload = {
@@ -343,6 +441,24 @@ async function saveConfig(e) {
       accent_end:
         (themeAccentEndEl && themeAccentEndEl.value) ||
         defaultConfig.theme.accent_end,
+    },
+    button: {
+      min_interval_sec: Number.isFinite(rawButtonMinInterval)
+        ? rawButtonMinInterval
+        : defaultConfig.button.min_interval_sec,
+    },
+    vad_binary: {
+      binary_path: vadBinaryPathEl.value.trim() || defaultConfig.vad_binary.binary_path,
+      model_path: vadBinaryModelPathEl.value.trim() || defaultConfig.vad_binary.model_path,
+    },
+    storage: {
+      local_root: storageLocalRootEl.value.trim() || defaultConfig.storage.local_root,
+      secondary_root: storageSecondaryRootEl.value.trim() || defaultConfig.storage.secondary_root,
+      secondary_enabled: storageSecondaryEnabledEl.checked,
+      keep_local_after_sync: storageKeepLocalEl.checked,
+    },
+    debug: {
+      vad_segments: debugVadSegmentsEl.checked,
     },
     default_max_duration_seconds: defaultMaxDuration,
   };

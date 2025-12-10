@@ -38,6 +38,26 @@ class VadConfig(BaseModel):
     samples_overlap_s: float = Field(0.10, ge=0.0, le=1.0)
 
 
+class ButtonConfig(BaseModel):
+    min_interval_sec: float = Field(0.8, ge=0.0)
+
+
+class VadBinaryConfig(BaseModel):
+    binary_path: str = Field(settings.vad_binary)
+    model_path: str = Field(settings.vad_model_path)
+
+
+class StorageConfig(BaseModel):
+    local_root: str = Field(settings.get_local_recordings_root())
+    secondary_root: str = Field(settings.recordings_secondary_root)
+    secondary_enabled: bool = Field(settings.secondary_storage_enabled)
+    keep_local_after_sync: bool = Field(settings.keep_local_after_sync)
+
+
+class DebugConfig(BaseModel):
+    vad_segments: bool = Field(settings.debug_vad_segments)
+
+
 class ThemeConfig(BaseModel):
     base: str = "#1e1e2e"
     surface0: str = "#313244"
@@ -110,6 +130,10 @@ class AppConfig(BaseModel):
     whisper: WhisperConfig = Field(default_factory=WhisperConfig)
     vad: VadConfig = Field(default_factory=VadConfig)
     theme: ThemeConfig = Field(default_factory=ThemeConfig)
+    button: ButtonConfig = Field(default_factory=ButtonConfig)
+    vad_binary: VadBinaryConfig = Field(default_factory=VadBinaryConfig)
+    storage: StorageConfig = Field(default_factory=StorageConfig)
+    debug: DebugConfig = Field(default_factory=DebugConfig)
 
 
 def load_app_config() -> AppConfig:

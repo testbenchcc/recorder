@@ -349,6 +349,145 @@
         </div>
       </div>
 
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
+        <div class="card">
+        <div class="card-header">Button</div>
+        <div class="card-body">
+          <div class="mb-0">
+            <label for="button-min-interval-sec" class="form-label small">
+              Min interval between presses (seconds)
+            </label>
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              class="form-control form-control-sm"
+              id="button-min-interval-sec"
+            />
+            <div class="form-text">
+              Minimum time between button presses to prevent accidental double-presses.
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
+        <div class="card">
+        <div class="card-header">VAD binary</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label for="vad-binary-path" class="form-label small">
+              VAD binary path
+            </label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              id="vad-binary-path"
+              placeholder="/path/to/vad-speech-segments"
+            />
+            <div class="form-text">
+              Full path to the VAD binary executable.
+            </div>
+          </div>
+          <div class="mb-0">
+            <label for="vad-binary-model-path" class="form-label small">
+              VAD model path
+            </label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              id="vad-binary-model-path"
+              placeholder="/path/to/ggml-silero-v6.2.0.bin"
+            />
+            <div class="form-text">
+              Full path to the VAD model file.
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
+        <div class="card">
+        <div class="card-header">Storage</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label for="storage-local-root" class="form-label small">
+              Local recordings root
+            </label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              id="storage-local-root"
+              placeholder="/path/to/local/recordings"
+            />
+            <div class="form-text">
+              Primary local directory for storing recordings.
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="storage-secondary-root" class="form-label small">
+              Secondary recordings root
+            </label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              id="storage-secondary-root"
+              placeholder="/mnt/smb/recordings"
+            />
+            <div class="form-text">
+              Optional secondary storage location (e.g., network share).
+            </div>
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="storage-secondary-enabled"
+            />
+            <label class="form-check-label" for="storage-secondary-enabled">
+              Enable secondary storage
+            </label>
+          </div>
+          <div class="form-check form-switch mb-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="storage-keep-local-after-sync"
+            />
+            <label class="form-check-label" for="storage-keep-local-after-sync">
+              Keep local copy after sync
+            </label>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
+        <div class="card">
+        <div class="card-header">Debug</div>
+        <div class="card-body">
+          <div class="form-check form-switch mb-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              role="switch"
+              id="debug-vad-segments"
+            />
+            <label class="form-check-label" for="debug-vad-segments">
+              Debug VAD segments
+            </label>
+            <div class="form-text">
+              Enable verbose logging for VAD segment detection.
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
     </div>
   </form>
 

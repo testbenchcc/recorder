@@ -155,11 +155,31 @@ The **Home** and **Configuration** pages follow the same design principles:
 - Compact headers and labels for maximum content density
 - Responsive layouts that adapt to any screen size
 
-The **Configuration** page now includes a **Theme** card where you can adjust seven primary UI colors:
-- `base`, `surface0`, `surface1`, `surface2` (background layers)
-- `text`, `subtext1`, `overlay2` (foreground text layers)
+The **Configuration** page now includes several configuration cards:
 
-By default these use a Catppuccin-style dark palette, but you can customize them to match your environment.
+- **Recording Light**: Control the LED ring brightness, color, and enable/disable
+- **Recording Defaults**: Set default maximum recording duration
+- **Theme**: Adjust seven primary UI colors (`base`, `surface0`, `surface1`, `surface2`, `text`, `subtext1`, `overlay2`, `accent_start`, `accent_end`). By default these use a Catppuccin-style dark palette.
+- **Whisper Transcription Server**: Configure Whisper.cpp integration settings
+- **VAD Segmentation**: Fine-tune Voice Activity Detection parameters for speech segment detection
+- **Button**: Set minimum interval between button presses to prevent accidental double-presses
+- **VAD Binary**: Configure paths to the VAD binary executable and model file
+- **Storage**: Configure local and secondary (network) storage locations, enable/disable secondary storage, and control whether to keep local copies after sync
+- **Debug**: Enable verbose logging for VAD segment detection
+
+These settings are now managed through the web UI instead of environment variables, making configuration more accessible and user-friendly.
+
+> **Note:** The following environment variables can now be configured through the web UI:
+> - `RECORDER_BUTTON_MIN_INTERVAL_SEC` → **Button** card
+> - `RECORDER_VAD_BINARY` → **VAD Binary** card
+> - `RECORDER_VAD_MODEL_PATH` → **VAD Binary** card
+> - `RECORDER_DEBUG_VAD_SEGMENTS` → **Debug** card
+> - `RECORDER_RECORDINGS_LOCAL_ROOT` → **Storage** card
+> - `RECORDER_RECORDINGS_SECONDARY_ROOT` → **Storage** card
+> - `RECORDER_SECONDARY_STORAGE_ENABLED` → **Storage** card
+> - `RECORDER_KEEP_LOCAL_AFTER_SYNC` → **Storage** card
+>
+> Environment variables still work as defaults, but values saved in the configuration page take precedence.
 
 The **Transcription** modal also includes a vertical VAD timeline with a white playback marker line that moves as audio plays, making it easy to see the current position at a glance.
 
