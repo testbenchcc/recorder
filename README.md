@@ -179,23 +179,25 @@ git pull
 
 ---
 
-# **6. Install Hardware Services (button and pixel ring)**
+# **6. Install Recorder Services (API, button, pixel ring, SMB)**
 
-These services include recorder-button, and recorder-pixel-ring, and the recorder application. the button and pixel-ring are stand alone python scripts that monitor and control seperatly from the recorder application. They interact with the recorder application using API calls.
+These services include recorder-api, recorder-button, recorder-pixel-ring, and the SMB recordings mount. The button and pixel-ring are stand alone python scripts that monitor and control seperatly from the recorder application. They interact with the recorder application using API calls.
 
-At startup, all three services start automatically.
+At startup, the API, hardware services, and SMB recordings share mount start automatically.
 
 ```bash
-chmod +x install_hardware_services.sh
-sudo ./install_hardware_services.sh
+chmod +x install_recorder_services.sh
+sudo ./install_recorder_services.sh
 sudo reboot
 ```
 
 Check services:
 
 ```bash
+sudo systemctl status recorder-api.service
 sudo systemctl status recorder-button.service
 sudo systemctl status recorder-pixel-ring.service
+sudo systemctl status recorder-smb-recordings.service
 sudo journalctl -u recorder-button.service -f
 sudo journalctl -u recorder-pixel-ring.service -f
 ```

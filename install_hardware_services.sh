@@ -5,6 +5,7 @@ SERVICE_DIR="/etc/systemd/system"
 BUTTON_SERVICE_NAME="recorder-button.service"
 RING_SERVICE_NAME="recorder-pixel-ring.service"
 API_SERVICE_NAME="recorder-api.service"
+SMB_SERVICE_NAME="recorder-smb-recordings.service"
 
 if [[ "$(id -u)" -ne 0 ]]; then
   echo "This script must be run as root (try: sudo $0)" >&2
@@ -28,8 +29,8 @@ echo "Installing systemd service ${BUTTON_SERVICE_NAME}..."
 cat > "${SERVICE_DIR}/${BUTTON_SERVICE_NAME}" <<EOF
 [Unit]
 Description=Recorder button service
-After=network-online.target ${API_SERVICE_NAME}
-Wants=network-online.target ${API_SERVICE_NAME}
+After=network-online.target ${API_SERVICE_NAME} ${SMB_SERVICE_NAME}
+Wants=network-online.target ${API_SERVICE_NAME} ${SMB_SERVICE_NAME}
 
 [Service]
 WorkingDirectory=${SCRIPT_DIR}
@@ -44,12 +45,28 @@ Environment=RECORDER_API_BASE_URL=http://127.0.0.1:8000
 WantedBy=multi-user.target
 EOF
 
+echo "Installing systemd service ${SMB_SERVICE_NAME}..."
+cat > "${SERVICE_DIR}/${SMB_SERVICE_NAME}" <<EOF
+[Unit]
+Description=Recorder SMB recordings share mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/mount -t cifs //192.168.1.5/StoragePool/recordings /mnt/smb/recordings -o credentials=/home/tbrinkhuis/.smbcred,uid=1000,gid=1000,dir_mode=0775,file_mode=0664,vers=3.0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 echo "Installing systemd service ${RING_SERVICE_NAME}..."
 cat > "${SERVICE_DIR}/${RING_SERVICE_NAME}" <<EOF
 [Unit]
 Description=Recorder pixel ring recording indicator
-After=network-online.target ${API_SERVICE_NAME}
-Wants=network-online.target ${API_SERVICE_NAME}
+After=network-online.target ${API_SERVICE_NAME} ${SMB_SERVICE_NAME}
+Wants=network-online.target ${API_SERVICE_NAME} ${SMB_SERVICE_NAME}
 
 [Service]
 WorkingDirectory=${SCRIPT_DIR}
@@ -69,8 +86,8 @@ echo "Installing systemd service ${API_SERVICE_NAME}..."
 cat > "${SERVICE_DIR}/${API_SERVICE_NAME}" <<EOF
 [Unit]
 Description=Recorder API server
-After=network-online.target
-Wants=network-online.target
+After=network-online.target ${SMB_SERVICE_NAME}
+Wants=network-online.target ${SMB_SERVICE_NAME}
 
 [Service]
 WorkingDirectory=${SCRIPT_DIR}
@@ -85,6 +102,9 @@ EOF
 
 echo "Reloading systemd daemon..."
 systemctl daemon-reload
+
+echo "Enabling and starting ${SMB_SERVICE_NAME}..."
+systemctl enable --now "${SMB_SERVICE_NAME}"
 
 echo "Enabling and starting ${API_SERVICE_NAME}..."
 systemctl enable --now "${API_SERVICE_NAME}"
