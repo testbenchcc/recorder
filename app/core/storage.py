@@ -123,6 +123,7 @@ class UnifiedRecording:
     created_at: datetime
     storage_location: str
     accessible: bool
+    keep_local: bool
 
 
 def _bytes_per_second() -> int:
@@ -472,10 +473,89 @@ def list_unified_recordings() -> List[UnifiedRecording]:
                 created_at=created_at,
                 storage_location=state.storage_location,
                 accessible=accessible,
+                keep_local=state.keep_local,
             )
         )
 
     return items
+
+
+def update_keep_local(recording_id: str, keep_local: bool) -> Optional[RecordingStorageState]:
+    state = get_storage_state(recording_id)
+    if state is None:
+        return None
+
+    conn = _get_connection()
+    try:
+        conn.execute(
+            """
+            UPDATE recording_storage
+            SET keep_local = ?
+            WHERE recording_id = ?
+            """,
+            (1 if keep_local else 0, recording_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    state.keep_local = keep_local
+    return state
+
+
+def ensure_local_copy(recording_id: str) -> bool:
+    state = get_storage_state(recording_id)
+    if state is None:
+        return False
+
+    local_root = get_local_root()
+    secondary_root = get_secondary_root()
+    local_path = local_root / state.relative_path
+    if local_path.is_file() and os.access(local_path, os.R_OK):
+        return True
+
+    if secondary_root is None:
+        return False
+
+    if not state.exists_secondary:
+        return False
+
+    secondary_path = secondary_root / state.relative_path
+    if not secondary_path.is_file() or not os.access(secondary_path, os.R_OK):
+        return False
+
+    try:
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+
+    try:
+        with secondary_path.open("rb") as f_src, local_path.open("wb") as f_dst:
+            while True:
+                chunk = f_src.read(1024 * 1024)
+                if not chunk:
+                    break
+                f_dst.write(chunk)
+    except (FileNotFoundError, OSError):
+        return False
+
+    now = datetime.now(timezone.utc).isoformat()
+    conn = _get_connection()
+    try:
+        conn.execute(
+            """
+            UPDATE recording_storage
+            SET exists_local = 1,
+                last_seen_local = ?
+            WHERE recording_id = ?
+            """,
+            (now, recording_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return True
 
 
 def migrate_to_secondary() -> None:

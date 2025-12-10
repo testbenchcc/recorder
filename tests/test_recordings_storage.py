@@ -39,3 +39,5 @@ def test_recordings_unified_list_includes_storage_metadata(tmp_path, monkeypatch
     assert match["storage_location"] in {"local", "both"}
     assert match.get("accessible") is True
     assert "relative_path" in match
+    assert "keep_local" in match
+    assert isinstance(match["keep_local"], bool)

@@ -407,6 +407,11 @@ locations. Each item includes:
 
 - `storage_location`: one of `local`, `remote`, or `both`
 - `accessible`: whether at least one copy is currently readable on disk
+ - `keep_local`: whether the recording is currently marked to be kept on local
+   storage after it has been synced to the secondary backend. This can be
+   toggled per recording from the Recordings page context menu; when enabling
+   it for a remote-only entry, the backend will first copy the file back from
+   secondary storage.
 
 The Recordings page in the web UI shows all entries regardless of current
 availability, disables playback/streaming controls for offline items, and still

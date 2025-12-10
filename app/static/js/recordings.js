@@ -1135,6 +1135,8 @@ function createRecordingCard(item) {
     storageLabel = "Secondary only";
   }
   const statusLabel = accessible ? "Available" : "Offline";
+  const keepLocal = item.keep_local === true;
+  const keepLocalLabel = keepLocal ? "Yes" : "No";
 
   const playDisabledAttr = accessible ? "" : "disabled";
   const playDisabledClass = accessible ? "" : " disabled";
@@ -1173,6 +1175,10 @@ function createRecordingCard(item) {
           <div class="recording-info-label">Status</div>
           <div class="recording-info-value">${statusLabel}</div>
         </div>
+        <div class="recording-info-item">
+          <div class="recording-info-label">Keep Local</div>
+          <div class="recording-info-value" data-keep-local-value="${item.id}">${keepLocalLabel}</div>
+        </div>
       </div>
       <div class="recording-card-actions">
         <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); transcribeRecording('${item.id}')">
@@ -1191,6 +1197,7 @@ function createRecordingCard(item) {
             <li><button class="dropdown-item${playDisabledClass}" ${playDisabledAttr} onclick="event.stopPropagation(); playRecording('${item.id}')">Play</button></li>
             <li><a class="dropdown-item${downloadDisabledClass}" ${downloadDisabledAttr} href="/recordings/${item.id}/stream" download="${fileName}" onclick="event.stopPropagation()">Download</a></li>
             <li><button class="dropdown-item" onclick="event.stopPropagation(); renameRecording('${item.id}')">Rename</button></li>
+            <li><button class="dropdown-item" data-keep-local-toggle="${item.id}" onclick="event.stopPropagation(); toggleKeepLocal('${item.id}', ${keepLocal})">${keepLocal ? "Stop keeping local copy" : "Keep local copy"}</button></li>
             <li><hr class="dropdown-divider"></li>
             <li><button class="dropdown-item text-danger" onclick="event.stopPropagation(); deleteRecording('${item.id}')">Delete</button></li>
           </ul>
@@ -1790,6 +1797,72 @@ async function deleteRecording(id) {
   } catch (err) {
     console.error(err);
     setRecordingsMessage("Error deleting recording", "danger");
+  }
+}
+
+async function toggleKeepLocal(id, currentKeepLocal) {
+  const desiredKeep = !currentKeepLocal;
+  try {
+    const res = await fetch(`/recordings/${id}/storage`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ keep_local: desiredKeep }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      const message =
+        body.detail ||
+        (desiredKeep
+          ? "Failed to enable local copy for this recording"
+          : "Failed to disable local copy for this recording");
+      setRecordingsMessage(message, "danger");
+      return;
+    }
+
+    const data = await res.json();
+    const effectiveKeep = !!data.keep_local;
+
+    // Update in-memory list for subsequent sorts/filters
+    allRecordings = (allRecordings || []).map((item) =>
+      item.id === id ? { ...item, keep_local: effectiveKeep } : item,
+    );
+
+    // Update card label inline
+    const keepLabelEl = document.querySelector(
+      `.recording-info-value[data-keep-local-value="${id}"]`,
+    );
+    if (keepLabelEl) {
+      keepLabelEl.textContent = effectiveKeep ? "Yes" : "No";
+    }
+
+    // Update dropdown label and handler
+    const card = document.querySelector(
+      `.recording-card[data-recording-id="${id}"]`,
+    );
+    if (card) {
+      const btn = card.querySelector(
+        `button.dropdown-item[data-keep-local-toggle="${id}"]`,
+      );
+      if (btn) {
+        btn.textContent = effectiveKeep
+          ? "Stop keeping local copy"
+          : "Keep local copy";
+        btn.onclick = (event) => {
+          event.stopPropagation();
+          toggleKeepLocal(id, effectiveKeep);
+        };
+      }
+    }
+
+    setRecordingsMessage(
+      effectiveKeep
+        ? "This recording will be kept locally after sync. If needed, a local copy has been restored from secondary."
+        : "This recording may be pruned locally after sync; it will continue to exist on secondary storage.",
+      "success",
+    );
+  } catch (err) {
+    console.error(err);
+    setRecordingsMessage("Error updating local copy preference", "danger");
   }
 }
 

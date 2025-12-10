@@ -26,9 +26,11 @@ from app.core.config import settings
 from app.core.storage import (
     get_local_root,
     ensure_recording_row,
+    ensure_local_copy,
     get_storage_state,
     list_unified_recordings,
     resolve_recording_path,
+    update_keep_local,
 )
 from app.core.status import get_status
 from app.core.recording import (
@@ -558,6 +560,10 @@ class RecordingUpdate(BaseModel):
     name: str = Field(..., max_length=200)
 
 
+class RecordingStorageUpdate(BaseModel):
+    keep_local: Optional[bool] = None
+
+
 def _display_name(path) -> str:
     stem = path.stem
     parts = stem.split("_", 2)
@@ -779,6 +785,7 @@ def list_recordings_endpoint(limit: int = 50, offset: int = 0) -> dict:
                     "duration_seconds": r.duration_seconds,
                     "created_at": r.created_at.isoformat(),
                     "storage_location": r.storage_location,
+                    "keep_local": r.keep_local,
                     "accessible": r.accessible,
                 }
                 for r in sliced
@@ -880,6 +887,48 @@ def delete_recording_endpoint(recording_id: str) -> dict:
     if not deleted:
         raise HTTPException(status_code=404, detail="Recording not found")
     return {"deleted": True, "id": recording_id}
+
+
+@router.patch("/recordings/{recording_id}/storage")
+def update_recording_storage_endpoint(
+    recording_id: str, payload: RecordingStorageUpdate
+) -> dict:
+    meta = get_recording(recording_id)
+    if meta is None:
+        raise HTTPException(status_code=404, detail="Recording not found")
+
+    state = get_storage_state(recording_id)
+    if state is None:
+        raise HTTPException(
+            status_code=404, detail="Storage state not found for this recording"
+        )
+
+    desired_keep = payload.keep_local
+    if desired_keep is not None and bool(desired_keep) != state.keep_local:
+        if desired_keep:
+            ok = ensure_local_copy(recording_id)
+            if not ok:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Unable to ensure a local copy from secondary storage",
+                )
+            state = update_keep_local(recording_id, True) or get_storage_state(
+                recording_id
+            )
+        else:
+            state = update_keep_local(recording_id, False) or get_storage_state(
+                recording_id
+            )
+
+    storage_location = state.storage_location if state is not None else "none"
+    accessible = resolve_recording_path(recording_id) is not None
+
+    return {
+        "id": recording_id,
+        "keep_local": bool(state.keep_local) if state is not None else None,
+        "storage_location": storage_location,
+        "accessible": accessible,
+    }
 
 
 @router.post("/recordings/{recording_id}/transcribe")
