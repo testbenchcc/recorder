@@ -119,7 +119,7 @@ chmod +x run.sh
 
 Once the app is running, open the web UI (for example, `http://recorder:8080`). The Home page features two recording interfaces:
 
-- **Controls card**: Control hardware-based ALSA recordings with Start and Stop buttons (disabled when idle)
+- **Controls card**: Control hardware-based ALSA recordings with Start and Stop buttons (disabled when idle). Status and error messages for hardware recordings are shown in a compact banner directly under the Dashboard title so the card layout does not jump.
 - **Browser recorder card**: Capture short test clips directly in the browser with Start, Pause, Stop, and Cancel buttons. The first available microphone is automatically selected for convenience.
  - **Remote listening card**: Listen to the Pi microphone in near real time from any browser connected to the web UI.
 
@@ -146,6 +146,7 @@ The **Recordings** page showcases the design system with:
 - **Quick Actions**: Click any card to open the transcription modal, or use the action buttons for Play, Download, Rename, and Delete
 - **Organized Info**: Recording details (date, time, duration, size) displayed in a clean grid layout
 - **Dark Cards**: Elevated card design with subtle borders that pop against the dark background
+ - **Inline notifications**: Success and error messages for operations like delete, rename, and transcription are displayed in a banner directly beneath the Recordings title bar, keeping the grid from shifting.
 
 ### Dashboard & Configuration
 The **Home** and **Configuration** pages follow the same design principles:
@@ -154,6 +155,7 @@ The **Home** and **Configuration** pages follow the same design principles:
 - Small, efficient form controls and buttons
 - Compact headers and labels for maximum content density
 - Responsive layouts that adapt to any screen size
+ - A header-level **Save configuration** button and inline banner on the Configuration page provide clear, non-jarring feedback when settings are updated.
 
 The **Configuration** page now includes several configuration cards:
 
