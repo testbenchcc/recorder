@@ -65,6 +65,28 @@
 
       <div style="break-inside: avoid; margin-bottom: 1rem;">
         <div class="card">
+        <div class="card-header">Whisper.cpp root</div>
+        <div class="card-body">
+          <div class="mb-0">
+            <label for="vad-whisper-cpp-root" class="form-label small">
+              Whisper.cpp root folder
+            </label>
+            <input
+              type="text"
+              class="form-control form-control-sm"
+              id="vad-whisper-cpp-root"
+              placeholder="~/whisper.cpp"
+            />
+            <div class="form-text">
+              Path to the root of your Whisper.cpp checkout (containing <code>models/</code> and <code>build/bin</code>).
+            </div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <div style="break-inside: avoid; margin-bottom: 1rem;">
+        <div class="card">
         <div class="card-header">Recording defaults</div>
         <div class="card-body">
           <div class="mb-3">
@@ -404,20 +426,6 @@
         <div class="card">
         <div class="card-header">VAD binary</div>
         <div class="card-body">
-          <div class="mb-3">
-            <label for="vad-whisper-cpp-root" class="form-label small">
-              Whisper.cpp root folder
-            </label>
-            <input
-              type="text"
-              class="form-control form-control-sm"
-              id="vad-whisper-cpp-root"
-              placeholder="~/whisper.cpp"
-            />
-            <div class="form-text">
-              Path to the root of your Whisper.cpp checkout (containing <code>models/</code> and <code>build/bin</code>).
-            </div>
-          </div>
           <div class="mb-3">
             <label for="vad-binary-path" class="form-label small">
               VAD binary status
