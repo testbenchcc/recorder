@@ -9,6 +9,7 @@ import subprocess
 import wave
 import uuid
 from datetime import datetime, timezone
+import time
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -54,6 +55,13 @@ logger = logging.getLogger(__name__)
 
 
 CONFIG_FILE_PATH = Path(os.getenv("RECORDER_CONFIG_PATH", "config.json"))
+
+
+VAD_LOCK_PATH = Path(os.getenv("RECORDER_VAD_LOCK_PATH", settings.cache_db_path + ".vad.lock"))
+
+
+class VadBusyError(Exception):
+    pass
 
 
 class RecordingLightConfig(BaseModel):
@@ -161,6 +169,58 @@ def _expand_user_path(path_str: str) -> Optional[Path]:
         return None
 
 
+def _pid_exists(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    if os.name == "posix":
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        else:
+            return True
+    return True
+
+
+def _acquire_vad_lock(timeout: float = 600.0, poll_interval: float = 0.5) -> None:
+    start = time.monotonic()
+    pid_str = str(os.getpid()).encode("ascii", errors="ignore")
+    while True:
+        try:
+            fd = os.open(str(VAD_LOCK_PATH), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            try:
+                raw = VAD_LOCK_PATH.read_text(encoding="utf-8").strip()
+                existing_pid = int(raw.split()[0]) if raw else -1
+            except Exception:
+                existing_pid = -1
+
+            stale = existing_pid > 0 and not _pid_exists(existing_pid)
+            if stale:
+                with contextlib.suppress(Exception):
+                    VAD_LOCK_PATH.unlink()
+                continue
+
+            if time.monotonic() - start >= timeout:
+                raise VadBusyError("Timed out waiting for VAD segmentation lock")
+
+            time.sleep(poll_interval)
+            continue
+
+        try:
+            os.write(fd, pid_str)
+        finally:
+            os.close(fd)
+        return
+
+
+def _release_vad_lock() -> None:
+    with contextlib.suppress(FileNotFoundError):
+        VAD_LOCK_PATH.unlink()
+
+
 def _parse_vad_segments_output(output: str) -> List[dict]:
     vad_segments: List[dict] = []
     speech_segments: List[dict] = []
@@ -230,76 +290,86 @@ def _run_vad_segments(audio_path: Path, force: bool = False) -> List[dict]:
                 except Exception:  # pragma: no cover - defensive
                     pass
 
-    cmd = [
-        settings.vad_binary,
-        "--vad-model",
-        settings.vad_model_path,
-        "--file",
-        str(audio_path),
-        "--threads",
-        str(settings.vad_threads),
-        "--no-prints",
-    ]
-
-    if vad_cfg is not None:
-        cmd.extend(
-            [
-                "--vad-threshold",
-                f"{vad_cfg.threshold:.3f}",
-                "--vad-min-silence-duration-ms",
-                str(vad_cfg.min_silence_duration_ms),
-                "--vad-max-speech-duration-s",
-                f"{vad_cfg.max_speech_duration_s:.3f}",
-                "--vad-speech-pad-ms",
-                str(vad_cfg.speech_pad_ms),
-                "--vad-samples-overlap",
-                f"{vad_cfg.samples_overlap_s:.3f}",
-            ]
-        )
+    try:
+        _acquire_vad_lock()
+    except VadBusyError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="VAD segmentation is currently busy; please retry this request later",
+        ) from exc
 
     try:
-        proc = subprocess.run(
-            cmd,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:  # pragma: no cover - environment specific
-        logger.error("VAD binary not found: %s", settings.vad_binary)
-        raise HTTPException(
-            status_code=500, detail="VAD binary is not available on this server"
-        ) from exc
-    except OSError as exc:  # pragma: no cover - environment specific
-        logger.error("Failed to start VAD process %s: %s", cmd, exc)
-        raise HTTPException(
-            status_code=500, detail="Failed to start VAD process"
-        ) from exc
+        cmd = [
+            settings.vad_binary,
+            "--vad-model",
+            settings.vad_model_path,
+            "--file",
+            str(audio_path),
+            "--threads",
+            str(settings.vad_threads),
+            "--no-prints",
+        ]
 
-    if proc.returncode != 0:
-        logger.error(
-            "VAD process failed (%s): stdout=%s stderr=%s",
-            proc.returncode,
-            proc.stdout,
-            proc.stderr,
-        )
-        raise HTTPException(
-            status_code=500, detail="VAD segmentation failed for this recording"
+        if vad_cfg is not None:
+            cmd.extend(
+                [
+                    "--vad-threshold",
+                    f"{vad_cfg.threshold:.3f}",
+                    "--vad-min-silence-duration-ms",
+                    str(vad_cfg.min_silence_duration_ms),
+                    "--vad-max-speech-duration-s",
+                    f"{vad_cfg.max_speech_duration_s:.3f}",
+                    "--vad-speech-pad-ms",
+                    str(vad_cfg.speech_pad_ms),
+                    "--vad-samples-overlap",
+                    f"{vad_cfg.samples_overlap_s:.3f}",
+                ]
+            )
+
+        try:
+            proc = subprocess.run(
+                cmd,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError as exc:  # pragma: no cover - environment specific
+            logger.error("VAD binary not found: %s", settings.vad_binary)
+            raise HTTPException(
+                status_code=500, detail="VAD binary is not available on this server"
+            ) from exc
+        except OSError as exc:  # pragma: no cover - environment specific
+            logger.error("Failed to start VAD process %s: %s", cmd, exc)
+            raise HTTPException(
+                status_code=500, detail="Failed to start VAD process"
+            ) from exc
+
+        if proc.returncode != 0:
+            logger.error(
+                "VAD process failed (%s): stdout=%s stderr=%s",
+                proc.returncode,
+                proc.stdout,
+                proc.stderr,
+            )
+            raise HTTPException(
+                status_code=500, detail="VAD segmentation failed for this recording"
+            )
+
+        segments = _parse_vad_segments_output(proc.stdout)
+        logger.info(
+            "VAD detected %d speech segments for %s", len(segments), audio_path.name
         )
 
-    segments = _parse_vad_segments_output(proc.stdout)
-    logger.info(
-        "VAD detected %d speech segments for %s", len(segments), audio_path.name
-    )
-
-    # Cache the segmentation keyed by recording id + VAD+Sequential format.
-    recording_id = audio_path.stem.split("_", 2)[1]
-    upsert_cache_entry(
-        recording_id=recording_id,
-        response_format="vad_sequential",
-        config_hash=config_hash,
-        config_json=config_json,
-        vad_segments_json=json.dumps(segments),
-    )
+        recording_id = audio_path.stem.split("_", 2)[1]
+        upsert_cache_entry(
+            recording_id=recording_id,
+            response_format="vad_sequential",
+            config_hash=config_hash,
+            config_json=config_json,
+            vad_segments_json=json.dumps(segments),
+        )
+    finally:
+        _release_vad_lock()
 
     return segments
 

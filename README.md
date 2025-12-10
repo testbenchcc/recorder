@@ -181,6 +181,7 @@ These settings are now managed through the web UI instead of environment variabl
 > - `RECORDER_RECORDINGS_SECONDARY_ROOT` → **Storage** card
 > - `RECORDER_SECONDARY_STORAGE_ENABLED` → **Storage** card
 > - `RECORDER_KEEP_LOCAL_AFTER_SYNC` → **Storage** card
+> - `RECORDER_VAD_LOCK_PATH` → Optional path to the PID lock file used to ensure only one VAD segmentation process (`vad-speech-segments`) runs at a time. When unset, a default lock file next to `cache.db` is used.
 >
 > Environment variables still work as defaults, but values saved in the configuration page take precedence.
 
