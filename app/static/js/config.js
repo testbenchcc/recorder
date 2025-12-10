@@ -601,6 +601,9 @@ async function saveConfig(e) {
       return;
     }
     setConfigMessage("Configuration saved", "success");
+    // Refresh model dropdowns and VAD status based on the newly saved config
+    populateWhisperModels(payload);
+    refreshVadStatus();
   } catch (err) {
     console.error(err);
     setConfigMessage("Error saving configuration", "danger");
