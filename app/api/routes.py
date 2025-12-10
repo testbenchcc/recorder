@@ -161,41 +161,6 @@ def _expand_user_path(path_str: str) -> Optional[Path]:
         return None
 
 
-def _infer_whisper_cpp_root_from_models(cfg: AppConfig) -> Optional[Path]:
-    """Infer Whisper.cpp root from configured model paths under a models/ folder.
-
-    This helps populate the dropdowns even before the dedicated root field is
-    explicitly configured in the UI.
-    """
-
-    candidates: List[str] = []
-
-    whisper_cfg = getattr(cfg, "whisper", None)
-    if whisper_cfg is not None:
-        model_path = getattr(whisper_cfg, "model_path", "")
-        if model_path:
-            candidates.append(model_path)
-
-    vad_cfg = getattr(cfg, "vad_binary", None)
-    if vad_cfg is not None:
-        vad_model = getattr(vad_cfg, "model_path", "")
-        if vad_model:
-            candidates.append(vad_model)
-
-    for path_str in candidates:
-        p = _expand_user_path(path_str)
-        if p is None:
-            continue
-        parent = p.parent
-        if parent.name != "models":
-            continue
-        root = parent.parent
-        if root.is_dir():
-            return root
-
-    return None
-
-
 def _parse_vad_segments_output(output: str) -> List[dict]:
     vad_segments: List[dict] = []
     speech_segments: List[dict] = []
@@ -593,18 +558,12 @@ def live_stream():
 def _get_whisper_cpp_root(cfg: AppConfig) -> Optional[Path]:
     vad_cfg = getattr(cfg, "vad_binary", None)
     root_str = getattr(vad_cfg, "whisper_cpp_root", "") if vad_cfg is not None else ""
+    if not root_str:
+        return None
 
-    if root_str:
-        root_path = _expand_user_path(root_str)
-        if root_path is not None and root_path.is_dir():
-            return root_path
-
-    # Fallback: infer the root from any configured model paths that live under
-    # a models/ directory so the UI can still populate dropdowns even before
-    # the dedicated Whisper.cpp root field is used.
-    inferred = _infer_whisper_cpp_root_from_models(cfg)
-    if inferred is not None and inferred.is_dir():
-        return inferred
+    root_path = _expand_user_path(root_str)
+    if root_path is not None and root_path.is_dir():
+        return root_path
 
     return None
 
