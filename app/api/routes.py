@@ -571,22 +571,59 @@ def _get_whisper_cpp_root(cfg: AppConfig) -> Optional[Path]:
 @router.get("/ui/whisper-models")
 def list_whisper_models() -> dict:
     cfg = _load_app_config()
-    root_path = _get_whisper_cpp_root(cfg)
-    root_str = str(root_path) if root_path is not None else ""
+    vad_cfg = getattr(cfg, "vad_binary", None)
+    root_str = getattr(vad_cfg, "whisper_cpp_root", "") if vad_cfg is not None else ""
 
-    models_dir: Optional[Path] = None
-    if root_path is not None:
-        models_dir = root_path / "models"
+    # If the Whisper.cpp root is not configured, we cannot construct usable
+    # model paths for the Whisper server. In this case, surface an empty list
+    # and let the UI explain that the root is required.
+    if not root_str:
+        return {"root": "", "models_dir": "", "index_url": "https://bins.husqy.net/", "models": []}
 
+    index_url = "https://bins.husqy.net/"
     models: List[dict] = []
-    if models_dir is not None and models_dir.is_dir():
-        for p in sorted(models_dir.iterdir()):
-            if p.is_file() and p.suffix.lower() == ".bin":
-                models.append({"name": p.name, "path": str(p)})
+
+    try:
+        resp = httpx.get(index_url, timeout=10.0)
+    except Exception as exc:  # pragma: no cover - network/service specific
+        logger.warning("Failed to fetch model index from %s: %s", index_url, exc)
+        return {
+            "root": root_str,
+            "models_dir": f"{root_str.rstrip('/')}/models",
+            "index_url": index_url,
+            "models": [],
+        }
+
+    if resp.status_code != 200:
+        logger.warning(
+            "Model index %s returned status %s", index_url, resp.status_code
+        )
+        return {
+            "root": root_str,
+            "models_dir": f"{root_str.rstrip('/')}/models",
+            "index_url": index_url,
+            "models": [],
+        }
+
+    html = resp.text
+
+    # The index is a simple directory listing with entries like:
+    # <li><a href="https://bins.husqy.net/ggml-base.en.bin">ggml-base.en.bin</a></li>
+    # Parse out the anchor text and keep only .bin files.
+    for match in re.finditer(r"<a[^>]*href=\"([^\"]+)\"[^>]*>([^<]+)</a>", html):
+        href = match.group(1)
+        text = match.group(2).strip()
+        if not text.lower().endswith(".bin"):
+            continue
+
+        filename = text
+        local_path = f"{root_str.rstrip('/')}/models/{filename}"
+        models.append({"name": filename, "path": local_path})
 
     return {
         "root": root_str,
-        "models_dir": str(models_dir) if models_dir is not None else "",
+        "models_dir": f"{root_str.rstrip('/')}/models",
+        "index_url": index_url,
         "models": models,
     }
 
