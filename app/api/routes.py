@@ -720,24 +720,75 @@ async def upload_recording(file: UploadFile = File(...)) -> dict:
 
 @router.get("/recordings")
 def list_recordings_endpoint(limit: int = 50, offset: int = 0) -> dict:
-    items = list_unified_recordings()
+    """List recordings, preferring the unified storage index.
+
+    If the unified index or its SQLite backing store is broken (for example due
+    to an old schema from a previous version), fall back to the legacy
+    filesystem-only listing so the UI can still function.
+    """
+
+    use_legacy = False
+    try:
+        items = list_unified_recordings()
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.error(
+            "list_unified_recordings() failed; falling back to legacy list_recordings(): %s",
+            exc,
+        )
+        items = list_recordings()
+        use_legacy = True
+
     items_sorted = sorted(items, key=lambda r: r.created_at, reverse=True)
     sliced = items_sorted[offset : offset + limit]
-    return {
-        "items": [
+
+    if not use_legacy:
+        return {
+            "items": [
+                {
+                    "id": r.id,
+                    "path": str(r.absolute_path)
+                    if r.absolute_path is not None
+                    else r.relative_path,
+                    "relative_path": r.relative_path,
+                    "name": _display_name(Path(r.absolute_path or r.relative_path)),
+                    "size_bytes": r.size_bytes,
+                    "duration_seconds": r.duration_seconds,
+                    "created_at": r.created_at.isoformat(),
+                    "storage_location": r.storage_location,
+                    "accessible": r.accessible,
+                }
+                for r in sliced
+            ],
+            "total": len(items_sorted),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    # Legacy filesystem-only fallback: treat everything as local and accessible.
+    local_root = get_local_root()
+    legacy_items = []
+    for r in sliced:
+        try:
+            rel_path = str(r.path.relative_to(local_root))
+        except Exception:
+            rel_path = r.path.name
+
+        legacy_items.append(
             {
                 "id": r.id,
-                "path": str(r.absolute_path) if r.absolute_path is not None else r.relative_path,
-                "relative_path": r.relative_path,
-                "name": _display_name(Path(r.absolute_path or r.relative_path)),
+                "path": str(r.path),
+                "relative_path": rel_path,
+                "name": _display_name(r.path),
                 "size_bytes": r.size_bytes,
                 "duration_seconds": r.duration_seconds,
                 "created_at": r.created_at.isoformat(),
-                "storage_location": r.storage_location,
-                "accessible": r.accessible,
+                "storage_location": "local",
+                "accessible": True,
             }
-            for r in sliced
-        ],
+        )
+
+    return {
+        "items": legacy_items,
         "total": len(items_sorted),
         "limit": limit,
         "offset": offset,

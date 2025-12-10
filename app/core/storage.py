@@ -12,6 +12,45 @@ from app.core.config import settings
 
 DB_FILENAME = "storage.db"
 
+CREATE_TABLE_SQL = """
+    CREATE TABLE IF NOT EXISTS recording_storage (
+        recording_id TEXT PRIMARY KEY,
+        relative_path TEXT NOT NULL,
+        exists_local INTEGER NOT NULL,
+        exists_secondary INTEGER NOT NULL,
+        keep_local INTEGER NOT NULL,
+        last_seen_local TEXT,
+        last_seen_secondary TEXT
+    )
+"""
+
+
+def _ensure_schema(conn: sqlite3.Connection) -> None:
+    """Ensure the recording_storage table exists with the expected schema.
+
+    If an older version of the table is present without the newer columns,
+    drop and recreate it. The index can be rebuilt from a filesystem scan.
+    """
+
+    conn.execute(CREATE_TABLE_SQL)
+
+    expected_cols = [
+        "recording_id",
+        "relative_path",
+        "exists_local",
+        "exists_secondary",
+        "keep_local",
+        "last_seen_local",
+        "last_seen_secondary",
+    ]
+
+    cur = conn.execute("PRAGMA table_info(recording_storage)")
+    cols = [row[1] for row in cur.fetchall()]
+    missing = [c for c in expected_cols if c not in cols]
+    if missing:
+        conn.execute("DROP TABLE IF EXISTS recording_storage")
+        conn.execute(CREATE_TABLE_SQL)
+
 
 @dataclass
 class RecordingStorageState:
@@ -78,21 +117,10 @@ def _db_path() -> Path:
 
 
 def _get_connection() -> sqlite3.Connection:
+
     path = _db_path()
     conn = sqlite3.connect(str(path))
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS recording_storage (
-            recording_id TEXT PRIMARY KEY,
-            relative_path TEXT NOT NULL,
-            exists_local INTEGER NOT NULL,
-            exists_secondary INTEGER NOT NULL,
-            keep_local INTEGER NOT NULL,
-            last_seen_local TEXT,
-            last_seen_secondary TEXT
-        )
-        """
-    )
+    _ensure_schema(conn)
     return conn
 
 
@@ -148,46 +176,6 @@ def ensure_recording_row(
             """,
             (recording_id, relative_path, 1 if keep else 0, now),
         )
-        # Then, clear existence flags for any rows whose files were not
-        # observed during this scan.
-        conn.row_factory = sqlite3.Row
-        cur_all = conn.execute(
-            """
-            SELECT recording_id, relative_path, exists_local, exists_secondary
-            FROM recording_storage
-            """,
-        )
-        all_rows = cur_all.fetchall()
-
-        local_keys = set(local_rel.keys())
-        secondary_keys = set(secondary_rel.keys())
-
-        for row in all_rows:
-            rec_id = row[0]
-            rel = row[1]
-            exists_local = bool(row[2])
-            exists_secondary = bool(row[3])
-
-            if exists_local and rel not in local_keys:
-                conn.execute(
-                    """
-                    UPDATE recording_storage
-                    SET exists_local = 0
-                    WHERE recording_id = ?
-                    """,
-                    (rec_id,),
-                )
-
-            if exists_secondary and rel not in secondary_keys:
-                conn.execute(
-                    """
-                    UPDATE recording_storage
-                    SET exists_secondary = 0
-                    WHERE recording_id = ?
-                    """,
-                    (rec_id,),
-                )
-
         conn.commit()
     finally:
         conn.close()

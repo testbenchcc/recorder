@@ -131,15 +131,17 @@ can be installed with:
 
 ```bash
 cd /home/pi/recorder
-sudo ./install_hardware_services.sh
+sudo ./install_recorder_services.sh
 ```
 
 This script:
 
+* Creates/updates `recorder-api.service`
 * Creates/updates `recorder-button.service`
 * Creates/updates `recorder-pixel-ring.service`
+* Creates/updates `recorder-smb-recordings.service`
 * Sets the right working directory and user
-* Enables both services on boot
+* Enables all services on boot
 
 Check status:
 
