@@ -1059,6 +1059,59 @@ async function bulkDeleteRecordings() {
   await loadRecordings();
 }
 
+async function bulkSetKeepLocal(desiredKeep) {
+  const checkboxes = document.querySelectorAll(".recording-card-checkbox:checked");
+  const ids = Array.from(checkboxes).map((cb) => cb.dataset.recordingId);
+
+  if (ids.length === 0) return;
+
+  const actionLabel = desiredKeep ? "mark to keep a local copy for" : "stop keeping a local copy for";
+  const confirmed = window.confirm(
+    `Are you sure you want to ${actionLabel} ${ids.length} recording(s)?`
+  );
+  if (!confirmed) return;
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const id of ids) {
+    try {
+      const res = await fetch(`/recordings/${id}/storage`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keep_local: desiredKeep }),
+      });
+      if (!res.ok) {
+        failCount += 1;
+        const body = await res.json().catch(() => ({}));
+        console.error("Failed to update keep_local for recording", id, res.status, body);
+        continue;
+      }
+      successCount += 1;
+    } catch (err) {
+      console.error("Error updating keep_local for recording", id, err);
+      failCount += 1;
+    }
+  }
+
+  if (successCount > 0) {
+    setRecordingsMessage(
+      desiredKeep
+        ? `Marked ${successCount} recording(s) to keep a local copy.`
+        : `Marked ${successCount} recording(s) to stop keeping a local copy.`,
+      "success",
+    );
+  }
+  if (failCount > 0) {
+    setRecordingsMessage(
+      `Failed to update keep-local setting for ${failCount} recording(s).`,
+      successCount > 0 ? "warning" : "danger",
+    );
+  }
+
+  await loadRecordings();
+}
+
 async function loadRecordings() {
   try {
     const res = await fetch("/recordings?limit=200");
@@ -2162,6 +2215,20 @@ window.addEventListener("DOMContentLoaded", () => {
       bulkDeleteRecordings();
     });
   }
-  
+
+  const bulkKeepLocalOnBtn = document.getElementById("bulk-keep-local-on-btn");
+  if (bulkKeepLocalOnBtn) {
+    bulkKeepLocalOnBtn.addEventListener("click", () => {
+      bulkSetKeepLocal(true);
+    });
+  }
+
+  const bulkKeepLocalOffBtn = document.getElementById("bulk-keep-local-off-btn");
+  if (bulkKeepLocalOffBtn) {
+    bulkKeepLocalOffBtn.addEventListener("click", () => {
+      bulkSetKeepLocal(false);
+    });
+  }
+
   loadRecordings();
 });
