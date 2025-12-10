@@ -11,14 +11,14 @@ class Settings(BaseSettings):
     alsa_device: str = "hw:1,0"
     recording_dir: str = "recordings"
     recordings_local_root: Optional[str] = None
-    recordings_secondary_root: str = ""
+    recordings_secondary_root: str = "/mnt/smb/recordings"
     secondary_storage_enabled: bool = False
     keep_local_after_sync: bool = True
     max_single_recording_seconds: int = 2 * 60 * 60
     retention_hours: int = 48
     vad_binary: str = "vad-speech-segments"
     vad_model_path: str = ""
-    vad_threads: int = 4
+    vad_threads: int = 3
     debug_vad_segments: bool = False
     cache_db_path: str = "cache.db"
 
