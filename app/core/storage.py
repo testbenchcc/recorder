@@ -52,6 +52,26 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
         conn.execute(CREATE_TABLE_SQL)
 
 
+def _parse_iso_utc(value: Optional[str]) -> Optional[datetime]:
+    """Parse an ISO timestamp and normalize it to timezone-aware UTC.
+
+    Older rows may have been stored without timezone info (naive). We treat
+    those as UTC to avoid mixing naive and aware datetimes in comparisons.
+    """
+
+    if value is None:
+        return None
+
+    try:
+        dt = datetime.fromisoformat(value)
+    except Exception:
+        return None
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 @dataclass
 class RecordingStorageState:
     recording_id: str
@@ -153,7 +173,8 @@ def ensure_recording_row(
     updated when the migration worker runs.
     """
     keep = settings.keep_local_after_sync if keep_local is None else keep_local
-    now = datetime.utcnow().isoformat()
+    # Store timestamps as explicit UTC to keep everything timezone-aware.
+    now = datetime.now(timezone.utc).isoformat()
 
     conn = _get_connection()
     try:
@@ -182,12 +203,8 @@ def ensure_recording_row(
 
 
 def _row_to_state(row: sqlite3.Row) -> RecordingStorageState:
-    last_local = (
-        datetime.fromisoformat(row[5]) if row[5] is not None else None
-    )
-    last_secondary = (
-        datetime.fromisoformat(row[6]) if row[6] is not None else None
-    )
+    last_local = _parse_iso_utc(row[5])
+    last_secondary = _parse_iso_utc(row[6])
     return RecordingStorageState(
         recording_id=row[0],
         relative_path=row[1],
@@ -249,7 +266,9 @@ def update_existence_flags(
     secondary_root = get_secondary_root()
 
     local_rel = {
-        str(p.relative_to(local_root)): datetime.utcfromtimestamp(p.stat().st_mtime)
+        str(p.relative_to(local_root)): datetime.fromtimestamp(
+            p.stat().st_mtime, tz=timezone.utc
+        )
         for p in from_local_paths
         if p.is_file()
     }
@@ -260,7 +279,9 @@ def update_existence_flags(
             if not p.is_file():
                 continue
             rel = str(p.relative_to(secondary_root))
-            secondary_rel[rel] = datetime.utcfromtimestamp(p.stat().st_mtime)
+            secondary_rel[rel] = datetime.fromtimestamp(
+                p.stat().st_mtime, tz=timezone.utc
+            )
 
     conn = _get_connection()
     try:
@@ -521,7 +542,7 @@ def migrate_to_secondary() -> None:
             continue
 
         # After a successful copy, update DB and optionally remove local file.
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         conn2 = _get_connection()
         try:
             conn2.execute(
