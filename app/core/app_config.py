@@ -89,6 +89,8 @@ class ArecordConfig(BaseModel):
     channels: int = Field(1, ge=1, le=2)
     sample_rate: int = Field(settings.sample_rate, ge=1)
     sample_format: str = settings.sample_format
+    enable_max_file_time: bool = True
+    max_file_time_seconds: Optional[int] = Field(900, ge=1)
     output_type: str = "wav"
     error_handling: ArecordErrorHandlingConfig = Field(
         default_factory=ArecordErrorHandlingConfig

@@ -606,12 +606,42 @@ window.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("config-form");
   const brightnessEl = document.getElementById("light-brightness");
   const brightnessValueEl = document.getElementById("light-brightness-value");
+  const whisperModelSelect = document.getElementById("whisper-model-path");
 
   form.addEventListener("submit", saveConfig);
 
   brightnessEl.addEventListener("input", () => {
     brightnessValueEl.textContent = brightnessEl.value;
   });
+
+  if (whisperModelSelect) {
+    whisperModelSelect.addEventListener("change", async () => {
+      const modelPath = (whisperModelSelect.value || "").trim();
+      if (!modelPath) {
+        return;
+      }
+
+      try {
+        const res = await fetch("/ui/whisper-load-model", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model_path: modelPath }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const message =
+            body.detail || `Failed to load Whisper model (${res.status})`;
+          setConfigMessage(message, "danger");
+          return;
+        }
+
+        setConfigMessage("Whisper model loaded", "success");
+      } catch (err) {
+        console.error(err);
+        setConfigMessage("Error loading Whisper model", "danger");
+      }
+    });
+  }
 
   loadConfig();
 });

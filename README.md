@@ -163,7 +163,7 @@ The **Configuration** page now includes several configuration cards:
 - **Recording Defaults**: Set default maximum recording duration
 - **Theme**: Adjust seven primary UI colors (`base`, `surface0`, `surface1`, `surface2`, `text`, `subtext1`, `overlay2`, `accent_start`, `accent_end`). By default these use a Catppuccin-style dark palette.
 - **Whisper.cpp Root**: Configure the root folder of your Whisper.cpp checkout (containing the `models/` and `build/bin/` directories) used by both Whisper and VAD.
-- **Whisper Transcription Server**: Configure Whisper.cpp integration settings, including server URL, response format, and a default model selected from the discovered `models/*.bin` files.
+  - **Whisper Transcription Server**: Configure Whisper.cpp integration settings, including server URL, response format, and a default model selected from the discovered `models/*.bin` files. Changing the default model in the Configuration page immediately tells the running Whisper server to load that model when Whisper integration is enabled.
 - **VAD Segmentation**: Fine-tune Voice Activity Detection parameters for speech segment detection
 - **Button**: Set minimum interval between button presses to prevent accidental double-presses
 - **VAD Binary**: Configure the VAD binary and model. The UI also shows a status line indicating whether the binary and model paths resolve correctly.

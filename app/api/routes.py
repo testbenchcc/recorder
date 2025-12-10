@@ -628,6 +628,71 @@ def list_whisper_models() -> dict:
     }
 
 
+class WhisperLoadModelRequest(BaseModel):
+    model_path: str = Field(...)
+
+
+@router.post("/ui/whisper-load-model")
+def load_whisper_model(payload: WhisperLoadModelRequest) -> dict:
+    cfg = _load_app_config()
+    whisper_cfg = getattr(cfg, "whisper", None)
+
+    if whisper_cfg is None or not whisper_cfg.enabled:
+        raise HTTPException(
+            status_code=400,
+            detail="Whisper integration is disabled in configuration",
+        )
+
+    api_base = whisper_cfg.api_url.rstrip("/")
+    if not api_base:
+        raise HTTPException(
+            status_code=400,
+            detail="Whisper API URL is not configured",
+        )
+
+    model_path = (payload.model_path or "").strip()
+    if not model_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Model path is required",
+        )
+
+    load_url = f"{api_base}/load"
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            files = {"model": (None, model_path)}
+            response = client.post(load_url, files=files)
+    except Exception as exc:
+        logger.error("Failed to call Whisper model load at %s: %s", load_url, exc)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to reach Whisper model loader service",
+        ) from exc
+
+    if response.status_code != 200:
+        try:
+            body = response.json()
+            detail = body.get("detail") or body.get("error") or response.text
+        except Exception:
+            detail = response.text
+        logger.warning(
+            "Whisper model load failed (%s): %s",
+            response.status_code,
+            detail,
+        )
+        raise HTTPException(
+            status_code=502,
+            detail=f"Whisper model load failed ({response.status_code})",
+        )
+
+    whisper_cfg.model_path = model_path
+    cfg.whisper = whisper_cfg
+    _save_app_config(cfg)
+
+    return {"ok": True, "model_path": model_path}
+
+
 @router.get("/ui/vad-status")
 def get_vad_status() -> dict:
     cfg = _load_app_config()
