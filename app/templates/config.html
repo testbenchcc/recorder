@@ -278,16 +278,16 @@
           </div>
           <div class="mb-0">
             <label for="whisper-model-path" class="form-label small">
-              Default model path
+              Default model
             </label>
-            <input
-              type="text"
-              class="form-control form-control-sm"
+            <select
+              class="form-select form-select-sm"
               id="whisper-model-path"
-              placeholder="/path/to/model.bin"
-            />
+            >
+              <option value="">No default</option>
+            </select>
             <div class="form-text">
-              Optional default path for the model to load via the <code>/load</code> endpoint.
+              Select a model from the discovered <code>models/</code> folder in your Whisper.cpp checkout.
             </div>
           </div>
         </div>
@@ -405,31 +405,44 @@
         <div class="card-header">VAD binary</div>
         <div class="card-body">
           <div class="mb-3">
-            <label for="vad-binary-path" class="form-label small">
-              VAD binary path
+            <label for="vad-whisper-cpp-root" class="form-label small">
+              Whisper.cpp root folder
             </label>
             <input
               type="text"
               class="form-control form-control-sm"
-              id="vad-binary-path"
-              placeholder="/path/to/vad-speech-segments"
+              id="vad-whisper-cpp-root"
+              placeholder="~/whisper.cpp"
             />
             <div class="form-text">
-              Full path to the VAD binary executable.
+              Path to the root of your Whisper.cpp checkout (containing <code>models/</code> and <code>build/bin</code>).
             </div>
+          </div>
+          <div class="mb-3">
+            <label for="vad-binary-path" class="form-label small">
+              VAD binary status
+            </label>
+            <div class="form-text">
+              The application checks for the VAD binary using the configured name and Whisper.cpp root. See the Whisper.cpp section in the README for build instructions.
+            </div>
+            <div id="vad-binary-status" class="small mt-1"></div>
+            <input
+              type="hidden"
+              id="vad-binary-path"
+            />
           </div>
           <div class="mb-0">
             <label for="vad-binary-model-path" class="form-label small">
-              VAD model path
+              VAD model
             </label>
-            <input
-              type="text"
-              class="form-control form-control-sm"
+            <select
+              class="form-select form-select-sm"
               id="vad-binary-model-path"
-              placeholder="/path/to/ggml-silero-v6.2.0.bin"
-            />
+            >
+              <option value="">No default</option>
+            </select>
             <div class="form-text">
-              Full path to the VAD model file.
+              Model file used by the VAD binary. Models discovered under the Whisper.cpp <code>models/</code> folder are listed here.
             </div>
           </div>
         </div>

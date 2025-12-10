@@ -46,6 +46,7 @@ const defaultConfig = {
   vad_binary: {
     binary_path: "vad-speech-segments",
     model_path: "",
+    whisper_cpp_root: "",
   },
   storage: {
     local_root: "recordings",
@@ -226,11 +227,15 @@ function applyVadBinary(config) {
 
   const binaryPathEl = document.getElementById("vad-binary-path");
   const modelPathEl = document.getElementById("vad-binary-model-path");
+  const rootEl = document.getElementById("vad-whisper-cpp-root");
 
   if (!binaryPathEl) return;
 
   binaryPathEl.value = cfg.binary_path || "";
   modelPathEl.value = cfg.model_path || "";
+  if (rootEl) {
+    rootEl.value = cfg.whisper_cpp_root || "";
+  }
 }
 
 function applyStorage(config) {
@@ -289,6 +294,8 @@ async function loadConfig() {
     applyVadBinary(data || {});
     applyStorage(data || {});
     applyDebug(data || {});
+    populateWhisperModels(data || {});
+    refreshVadStatus();
   } catch (err) {
     console.error(err);
     setConfigMessage("Error loading configuration", "danger");
@@ -301,6 +308,122 @@ async function loadConfig() {
     applyVadBinary({});
     applyStorage({});
     applyDebug({});
+    refreshVadStatus();
+  }
+}
+
+async function populateWhisperModels(config) {
+  const whisperSelect = document.getElementById("whisper-model-path");
+  const vadModelSelect = document.getElementById("vad-binary-model-path");
+
+  if (!whisperSelect && !vadModelSelect) return;
+
+  const currentWhisperModel =
+    (config && config.whisper && config.whisper.model_path) || "";
+  const currentVadModel =
+    (config && config.vad_binary && config.vad_binary.model_path) || "";
+
+  let payload;
+  try {
+    const res = await fetch("/ui/whisper-models");
+    if (!res.ok) {
+      return;
+    }
+    payload = await res.json();
+  } catch (err) {
+    console.error(err);
+    return;
+  }
+
+  const models = Array.isArray(payload.models) ? payload.models : [];
+
+  function buildOptions(selectEl, currentValue) {
+    if (!selectEl) return;
+
+    const prevValue = currentValue || selectEl.value || "";
+    selectEl.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "No default";
+    selectEl.appendChild(placeholder);
+
+    let hasCurrent = false;
+
+    models.forEach((m) => {
+      if (!m || !m.path) return;
+      const opt = document.createElement("option");
+      opt.value = m.path;
+      opt.textContent = m.name || m.path;
+      if (m.path === prevValue) {
+        hasCurrent = true;
+      }
+      selectEl.appendChild(opt);
+    });
+
+    if (prevValue && !hasCurrent) {
+      const opt = document.createElement("option");
+      opt.value = prevValue;
+      opt.textContent = "Custom: " + prevValue;
+      selectEl.appendChild(opt);
+      hasCurrent = true;
+    }
+
+    if (hasCurrent) {
+      selectEl.value = prevValue;
+    } else {
+      selectEl.value = "";
+    }
+  }
+
+  buildOptions(whisperSelect, currentWhisperModel);
+  buildOptions(vadModelSelect, currentVadModel);
+}
+
+async function refreshVadStatus() {
+  const statusEl = document.getElementById("vad-binary-status");
+  if (!statusEl) return;
+
+  try {
+    const res = await fetch("/ui/vad-status");
+    if (!res.ok) {
+      return;
+    }
+    const data = await res.json();
+    const binary = data && data.binary ? data.binary : {};
+    const model = data && data.model ? data.model : {};
+
+    const parts = [];
+
+    if (binary.effective_path) {
+      const binarySource = binary.source || "";
+      const binaryPrefix = binary.found
+        ? "VAD binary found at "
+        : "VAD binary not found; last checked path ";
+      const binaryText =
+        binaryPrefix +
+        binary.effective_path +
+        (binarySource ? " (" + binarySource + ")" : "");
+      parts.push(binaryText);
+    } else {
+      parts.push("VAD binary path is not configured.");
+    }
+
+    if (model.effective_path) {
+      const modelSource = model.source || "";
+      const modelPrefix = model.found
+        ? "Model found at "
+        : "Model path not found; last checked ";
+      const modelText =
+        modelPrefix +
+        model.effective_path +
+        (modelSource ? " (" + modelSource + ")" : "");
+      parts.push(modelText);
+    }
+
+    statusEl.textContent = parts.join(" ");
+  } catch (err) {
+    console.error(err);
   }
 }
 
@@ -340,6 +463,7 @@ async function saveConfig(e) {
   const buttonMinIntervalEl = document.getElementById("button-min-interval-sec");
   const vadBinaryPathEl = document.getElementById("vad-binary-path");
   const vadBinaryModelPathEl = document.getElementById("vad-binary-model-path");
+  const vadWhisperRootEl = document.getElementById("vad-whisper-cpp-root");
   const storageLocalRootEl = document.getElementById("storage-local-root");
   const storageSecondaryRootEl = document.getElementById("storage-secondary-root");
   const storageSecondaryEnabledEl = document.getElementById("storage-secondary-enabled");
@@ -450,6 +574,7 @@ async function saveConfig(e) {
     vad_binary: {
       binary_path: vadBinaryPathEl.value.trim() || defaultConfig.vad_binary.binary_path,
       model_path: vadBinaryModelPathEl.value.trim() || defaultConfig.vad_binary.model_path,
+      whisper_cpp_root: vadWhisperRootEl.value.trim() || "",
     },
     storage: {
       local_root: storageLocalRootEl.value.trim() || defaultConfig.storage.local_root,

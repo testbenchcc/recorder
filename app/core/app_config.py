@@ -45,6 +45,7 @@ class ButtonConfig(BaseModel):
 class VadBinaryConfig(BaseModel):
     binary_path: str = Field(settings.vad_binary)
     model_path: str = Field(settings.vad_model_path)
+    whisper_cpp_root: str = ""
 
 
 class StorageConfig(BaseModel):

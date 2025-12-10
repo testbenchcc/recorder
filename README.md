@@ -162,10 +162,10 @@ The **Configuration** page now includes several configuration cards:
 - **Recording Light**: Control the LED ring brightness, color, and enable/disable
 - **Recording Defaults**: Set default maximum recording duration
 - **Theme**: Adjust seven primary UI colors (`base`, `surface0`, `surface1`, `surface2`, `text`, `subtext1`, `overlay2`, `accent_start`, `accent_end`). By default these use a Catppuccin-style dark palette.
-- **Whisper Transcription Server**: Configure Whisper.cpp integration settings
+- **Whisper Transcription Server**: Configure Whisper.cpp integration settings, including server URL, response format, and a default model selected from the discovered `models/*.bin` files.
 - **VAD Segmentation**: Fine-tune Voice Activity Detection parameters for speech segment detection
 - **Button**: Set minimum interval between button presses to prevent accidental double-presses
-- **VAD Binary**: Configure paths to the VAD binary executable and model file
+- **VAD Binary**: Configure the Whisper.cpp root folder, VAD binary, and model. The UI also shows a status line indicating whether the binary and model paths resolve correctly.
 - **Storage**: Configure local and secondary (network) storage locations, enable/disable secondary storage, and control whether to keep local copies after sync
 - **Debug**: Enable verbose logging for VAD segment detection
 

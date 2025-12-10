@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import wave
 import uuid
@@ -85,6 +86,7 @@ class ButtonConfig(BaseModel):
 class VadBinaryConfig(BaseModel):
     binary_path: str = Field(settings.vad_binary)
     model_path: str = Field(settings.vad_model_path)
+    whisper_cpp_root: str = ""
 
 
 class StorageConfig(BaseModel):
@@ -148,6 +150,15 @@ def _save_app_config(cfg: AppConfig) -> None:
         raise HTTPException(
             status_code=500, detail="Failed to save configuration"
         ) from exc
+
+
+def _expand_user_path(path_str: str) -> Optional[Path]:
+    if not path_str:
+        return None
+    try:
+        return Path(path_str).expanduser()
+    except Exception:
+        return None
 
 
 def _parse_vad_segments_output(output: str) -> List[dict]:
@@ -542,6 +553,125 @@ def live_stream():
                 proc.kill()
 
     return StreamingResponse(iter_stream(), media_type="audio/webm")
+
+
+def _get_whisper_cpp_root(cfg: AppConfig) -> Optional[Path]:
+    vad_cfg = getattr(cfg, "vad_binary", None)
+    root_str = getattr(vad_cfg, "whisper_cpp_root", "") if vad_cfg is not None else ""
+    if not root_str:
+        return None
+    return _expand_user_path(root_str)
+
+
+@router.get("/ui/whisper-models")
+def list_whisper_models() -> dict:
+    cfg = _load_app_config()
+    root_path = _get_whisper_cpp_root(cfg)
+    root_str = str(root_path) if root_path is not None else ""
+
+    models_dir: Optional[Path] = None
+    if root_path is not None:
+        models_dir = root_path / "models"
+
+    models: List[dict] = []
+    if models_dir is not None and models_dir.is_dir():
+        for p in sorted(models_dir.iterdir()):
+            if p.is_file() and p.suffix.lower() == ".bin":
+                models.append({"name": p.name, "path": str(p)})
+
+    return {
+        "root": root_str,
+        "models_dir": str(models_dir) if models_dir is not None else "",
+        "models": models,
+    }
+
+
+@router.get("/ui/vad-status")
+def get_vad_status() -> dict:
+    cfg = _load_app_config()
+    vad_cfg = getattr(cfg, "vad_binary", None)
+
+    root_str = getattr(vad_cfg, "whisper_cpp_root", "") if vad_cfg is not None else ""
+    root_path = _expand_user_path(root_str) if root_str else None
+
+    config_binary = getattr(vad_cfg, "binary_path", "") if vad_cfg is not None else ""
+    config_model = getattr(vad_cfg, "model_path", "") if vad_cfg is not None else ""
+
+    derived_binary = ""
+    if root_path is not None:
+        derived_binary = str(root_path / "build" / "bin" / settings.vad_binary)
+
+    env_binary = settings.vad_binary
+    env_model = settings.vad_model_path
+
+    def _which_binary(path_str: str) -> Tuple[bool, str]:
+        if not path_str:
+            return False, ""
+        expanded = Path(path_str).expanduser()
+        if expanded.is_file():
+            return True, str(expanded)
+        if os.path.sep not in path_str and (
+            os.path.altsep is None or os.path.altsep not in path_str
+        ):
+            found = shutil.which(path_str)
+            if found:
+                return True, found
+        return False, str(expanded)
+
+    def _file_exists(path_str: str) -> Tuple[bool, str]:
+        if not path_str:
+            return False, ""
+        expanded = Path(path_str).expanduser()
+        return expanded.is_file(), str(expanded)
+
+    effective_binary_source = "none"
+    effective_binary_found = False
+    effective_binary_path = ""
+
+    for source, candidate in (
+        ("config", config_binary),
+        ("derived", derived_binary),
+        ("env", env_binary),
+    ):
+        if not candidate:
+            continue
+        found, resolved = _which_binary(candidate)
+        effective_binary_source = source
+        effective_binary_found = found
+        effective_binary_path = resolved or candidate
+        break
+
+    effective_model_source = "none"
+    effective_model_found = False
+    effective_model_path = ""
+
+    for source, candidate in (("config", config_model), ("env", env_model)):
+        if not candidate:
+            continue
+        found, resolved = _file_exists(candidate)
+        effective_model_source = source
+        effective_model_found = found
+        effective_model_path = resolved or candidate
+        break
+
+    return {
+        "whisper_cpp_root": root_str,
+        "binary": {
+            "config_path": config_binary,
+            "env_path": env_binary,
+            "derived_path": derived_binary,
+            "effective_path": effective_binary_path,
+            "found": effective_binary_found,
+            "source": effective_binary_source,
+        },
+        "model": {
+            "config_path": config_model,
+            "env_path": env_model,
+            "effective_path": effective_model_path,
+            "found": effective_model_found,
+            "source": effective_model_source,
+        },
+    }
 
 
 @router.get("/ui/config")
