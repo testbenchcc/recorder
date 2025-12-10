@@ -361,14 +361,6 @@ async function populateWhisperModels(config) {
       selectEl.appendChild(opt);
     });
 
-    if (prevValue && !hasCurrent) {
-      const opt = document.createElement("option");
-      opt.value = prevValue;
-      opt.textContent = "Custom: " + prevValue;
-      selectEl.appendChild(opt);
-      hasCurrent = true;
-    }
-
     if (hasCurrent) {
       selectEl.value = prevValue;
     } else {
