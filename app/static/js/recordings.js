@@ -1775,6 +1775,9 @@ async function transcribeRecording(id, overrideFormat, forceFresh) {
     if (selectedFormat) {
       params.set("response_format", selectedFormat);
     }
+    if (forceFresh) {
+      params.set("force", "true");
+    }
 
     const url =
       params.toString().length > 0

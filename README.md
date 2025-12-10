@@ -192,6 +192,7 @@ The **Transcription** modal also includes a vertical VAD timeline with a white p
 > - **Resend button**: Re-runs transcription while preserving the waveform visualization and timeline annotations
 > - **Regen VAD button**: Only regenerates speech detection regions and updates timeline annotations (does not transcribe)
 > - **Format switching**: Automatically loads cached data for the selected format if available, or shows a message to press Resend
+> - **Configuration changes**: Adjusting Whisper or VAD settings (for example, changing the default model) does **not** clear existing cached VAD or transcription data. Cached results are only recomputed when you explicitly press **Resend** (for transcripts) or **Regen VAD** (for VAD segments).
 > 
 > **VAD (Voice Activity Detection)** segments are useful for all formats as they provide visual timeline annotations, but only VAD + Sequential format requires them for transcription.
 

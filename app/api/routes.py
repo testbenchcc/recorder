@@ -276,7 +276,7 @@ def _run_vad_segments(audio_path: Path, force: bool = False) -> List[dict]:
 
     if not force:
         cached = get_cache_entry(audio_path.stem.split("_", 2)[1], "vad_sequential")
-        if cached is not None and cached.get("config_hash") == config_hash:
+        if cached is not None:
             raw = cached.get("vad_segments_json")
             if raw:
                 try:
@@ -1265,7 +1265,7 @@ def transcribe_recording_endpoint(
     # Check cache first unless forced.
     if not force:
         cached = get_cache_entry(recording_id, effective_fmt)
-        if cached is not None and cached.get("config_hash") == config_hash:
+        if cached is not None:
             text_content = cached.get("aggregated_text") or ""
             return {
                 "id": recording_id,
@@ -1342,7 +1342,7 @@ def get_cached_transcription_endpoint(
         )
 
     cached = get_cache_entry(recording_id, fmt)
-    if cached is None or cached.get("config_hash") != config_hash:
+    if cached is None:
         return {"cached": False}
 
     vad_segments = None
